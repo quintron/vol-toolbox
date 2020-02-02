@@ -17,16 +17,11 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     endif()
 endif()
 
-#VS project options
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-#Global compile options
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-#Include
-include(cmake/AddTest.cmake)
+#CMake tools
+list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+include(CompilerOptions)
+include(AddTest)
+find_package (Eigen3 REQUIRED)
 
 #Lib
 add_subdirectory (src/voltlbx)

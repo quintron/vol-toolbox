@@ -7,5 +7,7 @@ set_target_properties (voltlbx PROPERTIES
                        FOLDER src)
 target_include_directories (voltlbx PUBLIC
                             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
-                           )
-                          
+                           )                        
+target_link_libraries (voltlbx
+                       PRIVATE eigen3)
+add_dependencies (voltlbx eigen3)	
