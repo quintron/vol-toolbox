@@ -12,4 +12,5 @@ jobs:
     - name: Generate cmake 
       run: |
         echo Start generate CMake
+        cd $GITHUB_WORKSPACE
         call generate.cmd
