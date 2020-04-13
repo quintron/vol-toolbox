@@ -87,7 +87,7 @@ namespace voltlbx
     template<typename T>
     std::vector<std::size_t> longest_increasing_subsequence(const std::vector<T>& a)
     {
-        return longest_chain(std::size(a), [&](int i, int j) {return a[i] < a[j]; });
+        return longest_chain(std::size(a), [&](std::size_t i, std::size_t j) {return a[i] < a[j]; });
     }
 
 }

@@ -34,14 +34,23 @@ TEST(Utils, CheckLocate)
     check_locate_index({ 0.0, 1.0, 2.0 });
 }
 
-TEST(Utils, LongestIncreasingSeq)
+void check_longest_inc_seq(const std::vector<double>& a, 
+                           const std::vector<std::size_t>& ref_seq)
 {
-    std::vector<double> a = { 10, 22, 9, 33, 21, 50, 41, 60 };
-    auto seq = longest_increasing_subsequence(a);
-    std::vector<std::size_t> ref_seq = { 0, 1, 3, 6, 7 };
+    auto seq = longest_increasing_subsequence(a);   
     ASSERT_EQ(seq.size(), ref_seq.size());
     for (std::size_t i = 0; i < seq.size(); ++i)
     {
         ASSERT_EQ(seq[i], ref_seq[i]);
     }
+}
+
+TEST(Utils, LongestIncreasingSeq)
+{
+    check_longest_inc_seq({ }, { });
+    check_longest_inc_seq({ 1.0 }, { 0 });
+    check_longest_inc_seq({ 10, 22, 9, 33, 21, 50, 41, 60 },
+                          { 0, 1, 3, 6, 7 });
+    check_longest_inc_seq({ 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 },
+                          { 0, 4, 6, 9, 13, 15 });
 }
