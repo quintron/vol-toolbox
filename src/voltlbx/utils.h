@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
+#include <map>
 
 namespace voltlbx
 {
@@ -35,4 +37,57 @@ namespace voltlbx
         }
         return lower;
     }
+
+
+    /*! Return the longest sequence of integer a[i] s.t. : 
+        1. 0 <= a[i] < N
+        2. pred(a[i], a[i+1]) is true
+    */
+    template<typename BinaryPredicate>
+    std::vector<std::size_t> longest_chain(std::size_t N, BinaryPredicate&& pred)
+    {       
+        if (N == 0)
+            return {};
+        
+        // ls[i] will contain the size of longest chain with endpoint a[i]
+        std::vector<std::size_t> ls(N, 1);
+        for (std::size_t i = 1; i < N; ++i)
+        {
+            for (std::size_t j = 0; j < i; ++j)
+            {
+                if (ls[i] < ls[j] + 1
+                    && pred(j, i))
+                {
+                    ls[i] = ls[j] + 1;
+                }
+            }                                   
+        }
+
+        const auto max_it = std::max_element(std::begin(ls), std::end(ls));
+        const std::size_t max_index = std::distance(std::begin(ls), max_it);
+
+        //Backtracking            
+        std::size_t current_size = *max_it;
+        std::size_t current_index = max_index;
+        std::vector<std::size_t> chain = { max_index };
+        for (int i = static_cast<int>(max_index) - 1; i >= 0; --i)
+        {
+            if (ls[i] + 1 == current_size
+                && pred(i, current_index))
+            {
+                --current_size;
+                current_index = static_cast<std::size_t>(i);
+                chain.push_back(current_index);                
+            }
+        }
+        std::sort(std::begin(chain), std::end(chain));
+        return chain;
+    }
+
+    template<typename T>
+    std::vector<std::size_t> longest_increasing_subsequence(const std::vector<T>& a)
+    {
+        return longest_chain(std::size(a), [&](int i, int j) {return a[i] < a[j]; });
+    }
+
 }

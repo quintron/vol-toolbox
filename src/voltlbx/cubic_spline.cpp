@@ -65,14 +65,14 @@ namespace voltlbx
     
     double CubicSpline::operator()(double x) const
     {
-        int i = std::min(static_cast<int>(xs_.size()) - 2, 
-                         std::max(0, locate_left_index(xs_, x)));
+        const int i = std::min(static_cast<int>(xs_.size()) - 2, 
+                               std::max(0, locate_left_index(xs_, x)));
 
         const double h = xs_[i + 1] - xs_[i];
         assert(h > 0.0);
         const double a = (xs_[i + 1] - x) / h;
-        const double b = (x - xs_[i]) / h;
-        return a * ys_[i] + b * ys_[i + 1] + ((a*a*a - a)*ypps[i] + (b*b*b - b) * ypps[i + 1])*(h*h) / 6.0;
+        const double b = (x - xs_[i]) / h;        
+        return a * ys_[i] + b * ys_[i + 1] + (a * (a * a - 1.0) * ypps[i] + b * (b * b - 1.0) * ypps[i + 1]) * (h * h) / 6.0;
     }
 
 }

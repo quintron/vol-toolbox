@@ -33,3 +33,15 @@ TEST(Utils, CheckLocate)
     check_locate_index({ 3.14 });
     check_locate_index({ 0.0, 1.0, 2.0 });
 }
+
+TEST(Utils, LongestIncreasingSeq)
+{
+    std::vector<double> a = { 10, 22, 9, 33, 21, 50, 41, 60 };
+    auto seq = longest_increasing_subsequence(a);
+    std::vector<std::size_t> ref_seq = { 0, 1, 3, 6, 7 };
+    ASSERT_EQ(seq.size(), ref_seq.size());
+    for (std::size_t i = 0; i < seq.size(); ++i)
+    {
+        ASSERT_EQ(seq[i], ref_seq[i]);
+    }
+}
