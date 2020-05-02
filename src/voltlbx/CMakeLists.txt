@@ -1,6 +1,8 @@
 add_library (voltlbx
              cubic_spline.h
              cubic_spline.cpp
+             roots.h
+             roots.cpp
              utils.h
              utils.cpp
              hello.h
