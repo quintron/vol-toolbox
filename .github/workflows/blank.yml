@@ -15,3 +15,9 @@ jobs:
         cd $GITHUB_WORKSPACE
         generate.cmd        
       shell: cmd
+    - name: Build and test
+      run: |
+        echo Start Build
+        cd $GITHUB_WORKSPACE
+        build.cmd
+      shell: cmd
