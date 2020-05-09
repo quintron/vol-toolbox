@@ -1,4 +1,6 @@
 add_library (voltlbx
+             asinh_spline.h
+             asinh_spline.cpp
              cubic_spline.h
              cubic_spline.cpp
              roots.h

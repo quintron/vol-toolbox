@@ -91,4 +91,7 @@ namespace voltlbx
         return longest_chain(std::size(a), [&](std::size_t i, std::size_t j) {return a[i] < a[j]; });
     }
 
+
+    std::vector<double> linspace(double start, double end, std::size_t size, bool end_point = true);
+
 }
