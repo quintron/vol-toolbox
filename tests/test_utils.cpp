@@ -54,3 +54,27 @@ TEST(Utils, LongestIncreasingSeq)
     check_longest_inc_seq({ 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 },
                           { 0, 4, 6, 9, 13, 15 });
 }
+
+
+void check_linspace(double s, double e, std::size_t n, bool end_point, const std::vector<double>& ref_result)
+{
+    auto xs = linspace(s, e, n, end_point);
+    ASSERT_EQ(xs.size(), ref_result.size());
+    for (std::size_t i = 0; i < xs.size(); ++i)
+    {
+        ASSERT_DOUBLE_EQ(xs[i], ref_result[i]);
+    }
+}
+
+TEST(Utils, Linspace)
+{
+    check_linspace(0.0, 1.0, 2, true, { 0.0, 1.0 });
+    check_linspace(0.0, 1.0, 2, false, { 0.0});
+
+    check_linspace(0.0, 3.0, 3, true, { 0.0, 1.5, 3.0 });
+    check_linspace(0.0, 3.0, 3, false, { 0.0, 1.5 });
+
+    check_linspace(0.0, 3.0, 4, true, { 0.0, 1.0, 2.0, 3.0 });
+    check_linspace(0.0, 3.0, 4, false, { 0.0, 1.0, 2.0 });
+
+}
