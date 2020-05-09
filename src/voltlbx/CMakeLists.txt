@@ -1,4 +1,4 @@
-add_library (voltlbx
+add_library (VolTlbx
              asinh_spline.h
              asinh_spline.cpp
              cubic_spline.h
@@ -9,11 +9,12 @@ add_library (voltlbx
              utils.cpp
              hello.h
              hello.cpp)
-set_target_properties (voltlbx PROPERTIES 
-                       LINKER_LANGUAGE CXX
-                       FOLDER src)
-target_include_directories (voltlbx PUBLIC
-                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>)                        
-target_link_libraries (voltlbx
-                       PRIVATE eigen3)
-add_dependencies (voltlbx eigen3)	
+
+target_include_directories (VolTlbx
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>) 
+
+target_compile_features(VolTlbx PRIVATE cxx_std_17)
+                       
+target_link_libraries (VolTlbx
+                       PRIVATE Eigen3::Eigen3)
