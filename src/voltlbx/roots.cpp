@@ -1,5 +1,6 @@
 #include "roots.h"
 
+#include <exception>
 #include <algorithm> 
 
 namespace voltlbx

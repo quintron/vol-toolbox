@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <exception>
+
 namespace voltlbx
 {
     std::vector<double> linspace(double start, double end, std::size_t size, bool end_point)
