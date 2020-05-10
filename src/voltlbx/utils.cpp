@@ -1,6 +1,6 @@
 #include "utils.h"
 
-#include <exception>
+#include <stdexcept>
 
 namespace voltlbx
 {
