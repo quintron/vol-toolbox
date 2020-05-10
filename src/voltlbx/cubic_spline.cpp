@@ -43,7 +43,7 @@ namespace voltlbx
             u[i] = (6.0 * u[i] / (xs_[i + 1] - xs_[i - 1]) - sig * u[i - 1]) / p;
         }
 
-        int n = xs_.size();
+        int n = static_cast<int>(xs_.size());
         double qn, un;
         if (!right_derivative.has_value()) //Natural Spline
         {

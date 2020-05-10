@@ -19,10 +19,10 @@ namespace voltlbx
             return -1;
 
         if (x >= xs.back())
-            return xs.size() - 1;
+            return static_cast<int>(xs.size()) - 1;
 
         int lower = 0;
-        int upper = xs.size() - 1;
+        int upper = static_cast<int>(xs.size()) - 1;
         while (upper - lower > 1)
         {
             int mid = (upper + lower) >> 1;
