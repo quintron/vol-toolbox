@@ -28,6 +28,42 @@ TEST(AsinhSpline, TestSolve)
     check_spline_solving(1.0);
     check_spline_solving(-5.0);
     check_spline_solving(-1.0);
-    check_spline_solving(-0.5);            
-
+    check_spline_solving(-0.5);
 }
+
+
+
+void check_hypint_derivative(const HyperbolicIntegral hyp_int, std::pair<double, double> domain)
+{
+    auto[inf, sup] = domain;
+    ASSERT_TRUE(inf < sup);
+    auto xs = linspace(inf, sup, 101);
+    
+    auto fd_deriv = [&](double x)
+    {
+        constexpr double EPS = 1.0e-6;
+        return (hyp_int(x + EPS) - hyp_int(x - EPS)) / (2.0 * EPS);
+    };
+
+    for (auto x : xs)
+    {
+        const double deriv = fd_deriv(x);
+        const double ref_deriv = 1.0 / std::sqrt(hyp_int.a * x * x + hyp_int.b * x + hyp_int.c);
+        ASSERT_NEAR(deriv, ref_deriv, 1.0e-9);
+    }
+}
+
+void check_hypint_derivative(const HyperbolicIntegral hyp_int)
+{
+    auto[i, s] = hyp_int.domain();
+    constexpr double EPS_BOUND = 0.1;
+    check_hypint_derivative(hyp_int, { std::max(-10.0, i + EPS_BOUND), std::min(10.0, s - EPS_BOUND) });
+}
+
+TEST(HyperbolicIntegral, CheckDerivative)
+{
+    check_hypint_derivative(HyperbolicIntegral(2.50, 2.10, 0.51));
+    check_hypint_derivative(HyperbolicIntegral(1.90, 2.10, 0.5));
+    check_hypint_derivative(HyperbolicIntegral(1.90, -2.10, 0.5));
+}
+

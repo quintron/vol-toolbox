@@ -94,4 +94,8 @@ namespace voltlbx
 
     std::vector<double> linspace(double start, double end, std::size_t size, bool end_point = true);
 
+    template <typename T> int sgn(T val) {
+        return (T(0) < val) - (val < T(0));
+    }
+
 }
