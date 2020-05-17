@@ -1,8 +1,8 @@
 add_library (VolTlbx
-             asinh_spline.h
-             asinh_spline.cpp
              cubic_spline.h
              cubic_spline.cpp
+             hyp_integrale.h
+             hyp_integrale.cpp
              roots.h
              roots.cpp
              utils.h

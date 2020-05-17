@@ -1,6 +1,6 @@
 package_add_test (voltlbx_test
-                  test_asinh_spline.cpp
-                  test_cubic_spline.cpp 
+                  test_cubic_spline.cpp
+                  test_hyp_integrale.cpp
                   test_roots.cpp
                   test_utils.cpp				  
                   test_add.cpp)
