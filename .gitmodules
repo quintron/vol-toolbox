@@ -4,3 +4,6 @@
 [submodule "lib/eigen"]
 	path = lib/eigen
 	url = https://gitlab.com/libeigen/eigen.git
+[submodule "lib/cminpack"]
+	path = lib/cminpack
+	url = https://github.com/devernay/cminpack.git

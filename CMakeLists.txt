@@ -9,6 +9,8 @@ include(AddTest)
 
 #Lib
 find_package (Eigen3 REQUIRED)
+find_package (CMinPack REQUIRED)
+
 add_subdirectory (src/voltlbx)
 
 #Tests
