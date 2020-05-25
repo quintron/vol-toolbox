@@ -1,5 +1,6 @@
 #include "optim.h"
 
+#include <stdexcept>
 #include <cminpack.h>
 
 namespace voltlbx

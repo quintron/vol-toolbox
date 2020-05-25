@@ -1,6 +1,7 @@
-#include "hyp_integrale.h"
+#include "hyp_integral.h"
 
 #include <cassert>
+#include <cmath>
 #include <stdexcept>
 #include <limits>
 #include "utils.h"
@@ -112,10 +113,57 @@ namespace voltlbx
             double a = min_search_a + std::exp(u);
             return HyperbolicIntegral(a, b, c)(x) - value;
         };
-        const auto[u1, u2] = bracket_root(err, -10.0, 0.0);
+        const auto[u1, u2] = bracket_root(err, -2.0, 0.0);
         const double u = brenth(err, u1, u2);
         const double a = min_search_a + std::exp(u);
         return HyperbolicIntegral(a, b, c);
+    }
+
+
+    double MonotoneHyperbolicSpline::operator()(double x) const
+    {        
+        const int i = std::max(0, std::min(static_cast<int>(xs.size()) - 2, locate_left_index(xs, x)));        
+        return step_funcs[i](x - xs[i]) + ys[i];
+    }
+
+    MonotoneHyperbolicSpline MonotoneHyperbolicSpline::build
+        (std::map<double, double> nodes,
+         double left_slope,
+         double left_convexity)
+    {
+        std::vector<double> xs;
+        std::vector<double> ys;
+        for (auto[x, y] : nodes)
+        {
+            xs.push_back(x);
+            ys.push_back(y);
+        }
+
+        // 1 / sqrt(ax^2 + bx + c )        
+        // -(ax + b / 2) / (ax^2 + bx + c)^(3/2)
+
+        double current_y = ys[0];
+        double current_c = 1.0 / (left_slope * left_slope);
+        double current_b = -2.0 * left_convexity * std::pow(current_c, 1.5);        
+        std::vector<HyperbolicIntegral> step_funcs;
+        for (std::size_t i = 0; i + 1 < xs.size(); ++i)
+        {
+            const double d_y = ys[i + 1] - current_y;
+            if (d_y <= 0.0)
+            {
+                throw std::logic_error("values should be monotone");
+            }
+
+            const double d_x = xs[i + 1] - xs[i];
+            const auto step_f = HyperbolicIntegral::solve_a_from_value(current_b, current_c, d_x, d_y);
+            step_funcs.push_back(step_f);
+
+            current_y += step_f(d_x);
+            current_c = step_f.a * d_x * d_x + step_f.b * d_x + step_f.c;
+            current_b = 2.0 * step_f.a * d_x + step_f.b;
+        }
+
+        return MonotoneHyperbolicSpline(xs, ys, step_funcs);
     }
 
 }
