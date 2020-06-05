@@ -76,7 +76,7 @@ void check_monotone_spline_continuity(const std::map<double, double>& nodes,
     auto s = MonotoneHyperbolicSpline::build
                 (nodes, left_slope, left_convexity);
 
-    const double eps = 1.0e-13; //16.0 * std::numeric_limits<double>::epsilon();
+    const double eps = 2.0e-14;
     for (auto[x, y] : nodes)
     {        
         ASSERT_NEAR(s(x), y, eps);
@@ -118,7 +118,7 @@ TEST(MonotoneHyperbolicSpline, CheckBuild)
     {
         { 0.0, 0.0 },
         { 1.0, ref1 },
-        { 2.0, 1.05 * ref2 }
+        { 2.0, 1.08 * ref2 }
     }, 1.0, -rho);
 
     check_monotone_spline_continuity(std::map<double, double>

@@ -4,13 +4,13 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <functional>
 
 namespace voltlbx
 {
 
     /* Primitive of 1 / sqrt(a * x^2 + b * x + c)
-       Branch that contains zero and is vanishing at 0.
-       Contraint is that c > 0 and a > 0.
+       Branch defined and vanishing at 0 (it is then required that c > 0).
     */
     class HyperbolicIntegral
     {
@@ -19,18 +19,24 @@ namespace voltlbx
 
         static HyperbolicIntegral solve_a_from_value(double b, double c, double x, double value);
         static double max_value(double b, double c, double x);
+                
+        double operator()(double x) const
+        {
+            return eval(x);
+        }
 
-        double operator()(double x) const;
-
-        std::pair<double, double> domain() const;
+        std::pair<double, double> domain() const
+        {
+            return domain_;
+        }
         
         const double a;
         const double b;
         const double c;
 
     private:
-        const double sqrt_disc;
-        const int disc_sign;
+        const std::function<double(double)> eval;
+        const std::pair<double, double> domain_;
     };
     
 
@@ -52,7 +58,7 @@ namespace voltlbx
                                  std::vector<HyperbolicIntegral> step_funcs)
             :xs(std::move(xs)),
             ys(std::move(ys)),
-            step_funcs(std::move(step_funcs))            
+            step_funcs(std::move(step_funcs))
         {
         }
 

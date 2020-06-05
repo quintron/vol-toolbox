@@ -8,88 +8,160 @@
 #include "roots.h"
 
 namespace voltlbx
-{       
+{
     
+    std::function<double(double)> hyperbolic_integral(double a, double b, double c)
+    {
+        if (c <= 0.0)
+            throw std::out_of_range("c should be strictly positive");
+
+        const double eps = std::numeric_limits<double>::epsilon();
+
+        if (std::abs(a) <= std::abs(b) * eps) // a is null
+        {
+            if (std::abs(b) <= std::abs(c) * eps) // c is null
+            {
+                return [=](double x)-> double {return c; };
+            }
+            else
+            {
+                return [=](double x) -> double
+                {
+                    return 2.0 * (std::sqrt(b * x + c)- std::sqrt(c)) / b;
+                };
+            }
+        }
+
+        const double C = (4.0 * a * c - b * b) / (4.0 * a);
+        const double sqrt_a = std::sqrt(std::abs(a));
+
+        if (std::abs(C) == 0.0)
+        {
+            const double beta = 0.5 * b / a;
+            return [=](double x)
+            {
+                return (std::log(x + beta) - std::log(beta)) / sqrt_a;
+            };
+        }
+
+        const double alpha = std::sqrt(std::abs(a) / std::abs(C));
+        const double beta = alpha * b * 0.5 / a;
+
+        if (a < 0.0)
+        {
+            return [=](double x)
+            {
+                const double z = alpha * x + beta;
+                return (std::asin(z) - std::asin(beta)) / sqrt_a;
+            };
+        }
+
+        if (C > 0.0)
+        {
+            return [=](double x)
+            {
+                const double z = alpha * x + beta;
+                return (std::asinh(z) - std::asinh(beta)) / sqrt_a;
+            };
+        }
+
+        assert(C < 0.0);
+        return [=](double x)
+        {
+            const double z = alpha * x + beta;
+            if (z >= 1.0)
+            {
+                return (std::acosh(z) - std::acosh(beta)) / sqrt_a;
+            }
+            else if (z <= 1.0)
+            {
+                return -(std::acosh(-z) - std::acosh(-beta)) / sqrt_a;
+            }
+            else
+            {
+                return std::numeric_limits<double>::quiet_NaN();
+            }
+        };
+    }
+
+
+    std::pair<double, double> hyperbolic_integral_domain(double a, double b, double c)
+    {
+        if (c <= 0.0)
+            throw std::out_of_range("c should be strictly positive");
+
+        const double eps = std::numeric_limits<double>::epsilon();
+
+        if (std::abs(a) <= std::abs(b) * eps) // a is null
+        {
+            if (std::abs(b) <= std::abs(c) * eps) // c is null
+            {
+                return { -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() };
+            }
+            else
+            {
+                if (b > 0.0)
+                    return { -c / b,  std::numeric_limits<double>::infinity() };
+                else
+                    return { -std::numeric_limits<double>::infinity(),  -c / b };
+            }
+        }
+
+        const double C = (4.0 * a * c - b * b) / (4.0 * a);
+       
+        if (std::abs(C) == 0.0)
+        {
+            const double beta = 0.5 * b / a;
+            return { -beta, std::numeric_limits<double>::infinity() };
+        }
+
+        const double alpha = std::sqrt(std::abs(a) / std::abs(C));
+        const double beta = alpha * b * 0.5 / a;
+
+        if (a < 0.0)
+        {
+            return { (-1.0 - beta) / alpha, (1.0 - beta) / alpha };
+        }
+
+        if (C > 0.0)
+        {
+            return { -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() };
+        }
+
+        assert(C < 0.0);          
+        if (beta > 0.0)
+        {
+            return { (1.0 - beta) / alpha , std::numeric_limits<double>::infinity() };
+        }
+
+        assert(beta < 0.0);
+        return { -std::numeric_limits<double>::infinity(), (-1.0 - beta) / alpha };
+    }
+
+
+
     HyperbolicIntegral::HyperbolicIntegral(double a, double b, double c)
         :a(a),
         b(b),
         c(c),
-        sqrt_disc(std::sqrt(std::abs(b * b - 4.0 * a * c))),
-        disc_sign(sgn(b*b - 4.0 * a * c))
+        eval(hyperbolic_integral(a,b,c)),
+        domain_(hyperbolic_integral_domain(a,b,c))
     {
-        assert(a > 0.0);
         assert(c > 0.0);
     }
-
-    double HyperbolicIntegral::operator()(double x) const
-    {
-        if (disc_sign == 0)
-        {
-            const double u = x + b / (2.0 * a);
-            return std::log(u) / std::sqrt(a);
-        }
-
-        const double z = (2.0 * a * x + b) / sqrt_disc;
-        const double z0 = b / sqrt_disc;
-
-        if (disc_sign < 0.0)
-        {
-            return (std::asinh(z) - std::asinh(z0)) / std::sqrt(a);
-        }
-        else if (z >= 1.0)
-        {
-            return (std::acosh(z) - std::acosh(z0)) / std::sqrt(a);
-        }
-        else if (z <= -1.0)
-        {
-            return (-std::acosh(-z) + std::acosh(-z0)) / std::sqrt(a);
-        }
-        else
-        {
-            return std::numeric_limits<double>::quiet_NaN();
-        }
-    }
-
-    std::pair<double, double> HyperbolicIntegral::domain() const
-    {
-        if (disc_sign < 0.0)
-        {
-            return { -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() };
-        }
-        else if (disc_sign > 0.0)
-        {
-            double z0 = b / sqrt_disc;
-            if (z0 >= 1.0)
-            {
-                return { (1.0 - z0) * sqrt_disc / (2.0 * a),
-                         std::numeric_limits<double>::infinity() };
-            }
-            else if (z0 <= -1.0)
-            {
-                return { -std::numeric_limits<double>::infinity(),
-                         (-1.0 - z0) * sqrt_disc / (2.0 * a) };
-            }
-
-            throw std::logic_error("should never get there !");
-        }
-
-        throw std::runtime_error("not yet implemented");
-    }
-
+    
 
     double min_a(double b, double c, double x)
     {
-        const double min_val = c * 252.0 * std::numeric_limits<double>::epsilon();
-        
         if (std::abs(x) == 0.0)
-            return min_val;
+            return -std::numeric_limits<double>::infinity();
 
-        return std::max(min_val, -(c + x * b) / (x * x));
+        return  -(c + x * b) / (x * x);
     }
 
 
     double HyperbolicIntegral::max_value(double b, double c, double x)
-    {            
+    {
         return HyperbolicIntegral(min_a(b, c, x), b, c)(x);
     }
 
@@ -106,7 +178,6 @@ namespace voltlbx
             throw std::runtime_error("value is not attainable");
 
         const double min_search_a = min_a(b, c, x);
-        assert(min_search_a > 0.0);
         
         const auto err = [&](double u)
         {
