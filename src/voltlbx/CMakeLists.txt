@@ -3,8 +3,11 @@ add_library (VolTlbx
              cubic_spline.cpp
              hyp_integral.h
              hyp_integral.cpp
+             linear_filter.h
+             linear_filter.cpp
              optim.h
              optim.cpp
+             pimpl.h
              roots.h
              roots.cpp
              utils.h
@@ -19,4 +22,5 @@ target_include_directories (VolTlbx
 target_compile_features(VolTlbx PRIVATE cxx_std_17)
                        
 target_link_libraries (VolTlbx
-                       PRIVATE cminpack Eigen3::Eigen3)
+                       PUBLIC Eigen3::Eigen3                       
+                       PRIVATE cminpack)
