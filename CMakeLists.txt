@@ -10,8 +10,9 @@ include(AddTest)
 #Lib
 find_package (Eigen3 REQUIRED)
 find_package (CMinPack REQUIRED)
-
+add_subdirectory(lib/pybind11)
 add_subdirectory (src/voltlbx)
+add_subdirectory (src/binding)
 
 #Tests
 option(BUILD_TESTING "Test building option" ON)
@@ -24,9 +25,10 @@ if(BUILD_TESTING)
     set_target_properties (gmock PROPERTIES FOLDER external)
     set_target_properties (gmock_main PROPERTIES FOLDER external)    
     
-
     #Project tests
     enable_testing ()
     add_subdirectory (tests)
 endif()
+
+
 

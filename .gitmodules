@@ -7,3 +7,6 @@
 [submodule "lib/cminpack"]
 	path = lib/cminpack
 	url = https://github.com/devernay/cminpack.git
+[submodule "lib/pybind11"]
+	path = lib/pybind11
+	url = https://github.com/pybind/pybind11.git
