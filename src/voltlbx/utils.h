@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <type_traits>
 
 namespace voltlbx
 {
@@ -96,6 +97,15 @@ namespace voltlbx
 
     template <typename T> int sgn(T val) {
         return (T(0) < val) - (val < T(0));
+    }
+
+    template<typename Tin, typename F>
+    auto map(const std::vector<Tin>& in, F&& func)
+    {
+        using Tout = std::invoke_result<F, Tin>::type;
+        std::vector<Tout> res;
+        std::transform(in.begin(), in.end(), std::back_inserter(res), func);
+        return res;
     }
 
 }

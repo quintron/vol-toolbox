@@ -10,6 +10,8 @@ add_library (VolTlbx
              pimpl.h
              roots.h
              roots.cpp
+             smile.h
+             smile.cpp
              utils.h
              utils.cpp
              hello.h

@@ -78,3 +78,16 @@ TEST(Utils, Linspace)
     check_linspace(0.0, 3.0, 4, false, { 0.0, 1.0, 2.0 });
 
 }
+
+TEST(Utils, Map)
+{
+    auto f = [](double x) { return x * x; };
+    std::vector<double> xs = { 1.0, 2.0, 3.0, 4.0 };
+    auto res_map = map(xs, f);
+
+    ASSERT_EQ(res_map.size(), xs.size());
+    for (std::size_t i = 0; i < xs.size(); ++i)
+    {
+        ASSERT_DOUBLE_EQ(res_map[i], f(xs[i]));
+    }
+}
