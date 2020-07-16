@@ -65,14 +65,31 @@ namespace voltlbx
     
     double CubicSpline::operator()(double x) const
     {
-        const int i = std::min(static_cast<int>(xs_.size()) - 2, 
-                               std::max(0, locate_left_index(xs_, x)));
+        return eval(x, nullptr, nullptr);
+    }
+
+    double CubicSpline::eval(double x, double* yp, double* ypp) const
+    {
+        const size_t i = static_cast<size_t>(            
+                            std::min(static_cast<int>(xs_.size()) - 2,
+                                     std::max(0, locate_left_index(xs_, x))));
 
         const double h = xs_[i + 1] - xs_[i];
         assert(h > 0.0);
         const double a = (xs_[i + 1] - x) / h;
-        const double b = (x - xs_[i]) / h;        
-        return a * ys_[i] + b * ys_[i + 1] + (a * (a * a - 1.0) * ypps[i] + b * (b * b - 1.0) * ypps[i + 1]) * (h * h) / 6.0;
+        const double b = (x - xs_[i]) / h;
+        
+        if (ypp)
+        {
+            *ypp = a * ypps[i] + b * ypps[i + 1];
+        }
+
+        if (yp)
+        {
+            *yp = (ys_[i + 1] - ys_[i]) / h + (-(3.0 * a * a - 1.0) * ypps[i] + (3.0 * b * b - 1.0) * ypps[i + 1]) * h / 6.0;
+        }
+
+        return a * ys_[i] + b * ys_[i + 1] + (a * (a * a - 1.0) * ypps[i] + b * (b * b - 1.0) * ypps[i + 1]) * (h * h) / 6.0;        
     }
 
 }
