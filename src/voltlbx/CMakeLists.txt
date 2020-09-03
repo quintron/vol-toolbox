@@ -3,6 +3,7 @@ add_library (VolTlbx
              cubic_spline.cpp
              hyp_integral.h
              hyp_integral.cpp
+             jet.h             
              linear_filter.h
              linear_filter.cpp
              optim.h

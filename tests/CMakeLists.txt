@@ -1,6 +1,7 @@
 package_add_test (voltlbx_test
                   test_cubic_spline.cpp
                   test_hyp_integral.cpp
+                  test_jet.cpp
                   test_linear_filter.cpp
                   test_optim.cpp
                   test_roots.cpp

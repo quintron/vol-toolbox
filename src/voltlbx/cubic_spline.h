@@ -1,5 +1,6 @@
 #pragma once
 
+#include "jet.h"
 #include <vector>
 #include <optional>
 
@@ -44,7 +45,7 @@ namespace voltlbx
         double operator()(double) const;
 
         double eval(double x, double* yp, double* ypp) const;
-        std::tuple<double, double, double> eval_jet(double x) const
+        Jet eval_jet(double x) const
         {
             double yp, ypp;
             double y = eval(x, &yp, &ypp);

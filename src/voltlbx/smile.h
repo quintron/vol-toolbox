@@ -1,5 +1,6 @@
 #pragma once
 #include "pimpl.h"
+#include "jet.h"
 #include <cmath>
 #include <vector>
 
@@ -23,10 +24,17 @@ namespace voltlbx
         
         virtual double backbone(double z) const = 0;
 
-        virtual double vol(double x) 
+        virtual Jet backbone_jet(double z) const = 0;
+
+        virtual double vol(double x) const
         {
             return atf_vol * backbone(x / atf_dev);
         }
+
+        /// <summary>
+        /// Ratio of smile density and black-scholes density. 
+        /// </summary>
+        double density_ratio(double x) const;        
 
     private:
         const double atf_dev;
@@ -41,7 +49,9 @@ namespace voltlbx
                          std::vector<double> zs,
                          std::vector<double> vol_ratios);
 
-        virtual double backbone(double z) const override;
+        double backbone(double z) const override;
+
+        Jet backbone_jet(double z) const override;
     };
 
 }
