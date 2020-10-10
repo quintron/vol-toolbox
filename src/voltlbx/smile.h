@@ -34,7 +34,13 @@ namespace voltlbx
         /// <summary>
         /// Ratio of smile density and black-scholes density. 
         /// </summary>
-        double density_ratio(double x) const;        
+        double density_ratio(double x) const;
+
+
+        /// <summary>
+        /// BBF (Beresticky-Busca-Florent) pseudo local vol : smile volatility is harmonic average of pseudo lv        /// 
+        /// </summary>
+        double pseudo_local_vol(double x) const;
 
     private:
         const double atf_dev;

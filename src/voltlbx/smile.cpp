@@ -23,6 +23,20 @@ namespace voltlbx
     }
 
 
+    double pseudo_lv(double z, double atf_vol, double b, double db_dz)
+    {
+        return atf_vol * b / (1.0 - z * db_dz / b);
+    }
+
+
+    double Smile::pseudo_local_vol(double x) const
+    {
+        const double z = x / atf_dev;
+        auto j = backbone_jet(z);
+        return pseudo_lv(z, atf_vol, j.y, j.dy_dx);
+    }
+
+
     template<>
     struct Pimpl<CubicSplineSmile>::Implementation
     {    

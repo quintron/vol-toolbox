@@ -15,7 +15,7 @@ namespace voltlbx
         if (c <= 0.0)
             throw std::out_of_range("c should be strictly positive");
 
-        const double eps = std::numeric_limits<double>::epsilon();
+        constexpr double eps = std::numeric_limits<double>::epsilon();
 
         if (std::abs(a) <= std::abs(b) * eps) // a is null
         {
@@ -90,7 +90,7 @@ namespace voltlbx
         if (c <= 0.0)
             throw std::out_of_range("c should be strictly positive");
 
-        const double eps = std::numeric_limits<double>::epsilon();
+        constexpr double eps = std::numeric_limits<double>::epsilon();
 
         if (std::abs(a) <= std::abs(b) * eps) // a is null
         {

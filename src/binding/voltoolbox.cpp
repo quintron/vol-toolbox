@@ -15,7 +15,8 @@ PYBIND11_MODULE(voltoolbox, m) {
 
     py::class_<Smile>(m, "Smile")
         .def("vol", &Smile::vol, py::arg("x"))
-        .def("density_ratio", &Smile::density_ratio, py::arg("x"));
+        .def("density_ratio", &Smile::density_ratio, py::arg("x"))
+        .def("pseudo_local_vol", &Smile::pseudo_local_vol, py::arg("x"));
 
     py::class_<CubicSplineSmile, Smile>(m, "CubicSplineSmile")
         .def(py::init<double, double, std::vector<double>, std::vector<double>>(),
