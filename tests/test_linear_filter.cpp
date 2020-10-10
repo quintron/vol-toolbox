@@ -54,34 +54,3 @@ TEST(LinearFilter, RankOne)
         ASSERT_NEAR(p, ref_pred, 1.0e-15);
     }
 }
-
-class TermStructureCorrel
-{
-public:
-
-    TermStructureCorrel(double t_ref1, double t_ref2, double correl_ref, double scale_power)
-        : scale_power(scale_power),
-        theta_ref1(std::pow(t_ref1, scale_power)),
-        theta_ref2(std::pow(t_ref2, scale_power)),
-        correl_ref(correl_ref)
-    {
-        assert(t_ref1 >= 0.0);
-        assert(t_ref2 >= 0.0);
-        assert(correl_ref <= 1.0 && correl_ref >= -1.0);
-        assert(scale_power > 0.0);
-    }
-
-    double operator()(double t1, double t2) const
-    {       
-        const double theta1 = std::pow(t1, scale_power);
-        const double theta2 = std::pow(t2, scale_power);               
-        const double p = (theta1 - theta2) / (theta_ref1 - theta_ref2);
-        return std::pow(correl_ref, p * p);
-    }
-
-private:
-    const double scale_power;
-    const double theta_ref1;
-    const double theta_ref2;
-    const double correl_ref;
-};

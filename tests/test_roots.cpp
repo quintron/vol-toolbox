@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <voltlbx/roots.h>
+#include <cmath>
 
 using namespace voltlbx;
 

@@ -7,6 +7,9 @@ if (MSVC)
     
     # Parallel build
     add_compile_options ("/MP")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_hypot=hypot ")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj ")    
 endif ()
 
 #Useful defines

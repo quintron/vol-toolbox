@@ -102,7 +102,7 @@ namespace voltlbx
     template<typename Tin, typename F>
     auto map(const std::vector<Tin>& in, F&& func)
     {
-        using Tout = std::invoke_result<F, Tin>::type;
+        using Tout = typename std::invoke_result<F, Tin>::type;
         std::vector<Tout> res(in.size());
         std::transform(in.begin(), in.end(), res.begin(), func);
         return res;
