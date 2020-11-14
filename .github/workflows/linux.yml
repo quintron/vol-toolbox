@@ -13,11 +13,11 @@ jobs:
       run: |
         echo Start generate CMake
         cd $GITHUB_WORKSPACE
-        generate.sh      
+        sh generate.sh      
       shell: bash
     - name: Build and test
       run: |
         echo Start Build
         cd $GITHUB_WORKSPACE
-        runbuild.sh
+        sh runbuild.sh
       shell: bash
