@@ -1,0 +1,23 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Generate cmake 
+      run: |
+        echo Start generate CMake
+        cd $GITHUB_WORKSPACE
+        generate.sh      
+      shell: bash
+    - name: Build and test
+      run: |
+        echo Start Build
+        cd $GITHUB_WORKSPACE
+        runbuild.sh
+      shell: bash

@@ -1,3 +1,4 @@
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -8,15 +9,14 @@ if (MSVC)
     # Parallel build
     add_compile_options ("/MP")
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_hypot=hypot ")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC ")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wa,-mbig-obj ")    
+    add_compile_options (-D_hypot=hypot -fPIC)
 endif ()
 
 #Useful defines
 if (WIN32)
     add_definitions (-DSTRICT)
     add_definitions (-DNOMINMAX)
+    add_compile_options (-Wa,-mbig-obj) 
 endif ()
 
 if (MSVC)
