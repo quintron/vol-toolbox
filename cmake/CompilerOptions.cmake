@@ -9,14 +9,20 @@ if (MSVC)
     # Parallel build
     add_compile_options ("/MP")
 else()
+    # Need for pybind11  
     add_compile_options (-D_hypot=hypot -fPIC)
+    
+    # Need to compile with mingw in debug mode 
+    if (WIN32)
+         add_compile_options (-Wa,-mbig-obj)
+    endif()
+
 endif ()
 
 #Useful defines
 if (WIN32)
     add_definitions (-DSTRICT)
     add_definitions (-DNOMINMAX)
-    add_compile_options (-Wa,-mbig-obj) 
 endif ()
 
 if (MSVC)
