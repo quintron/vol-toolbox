@@ -1,3 +1,8 @@
+#Project folder
+/build/*
+/dist/* 
+/lib/
+
 #CMAKE
 CMakeLists.txt.user
 CMakeCache.txt
@@ -11,10 +16,16 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
-#Project folder
-/build/*
-/dist/* 
-/lib/
+#PYTHON
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.coverage
+*.egg-info*
+
+#NOTEBOOK
+*.ipynb_checkpoints*
 
 #VS CODE
 /.vscode/*

@@ -32,4 +32,4 @@ endif()
 
 #Install
 set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/install")
-install(TARGETS voltoolbox DESTINATION "${CMAKE_CURRENT_LIST_DIR}/dist")
+install(TARGETS _voltoolbox DESTINATION "${CMAKE_CURRENT_LIST_DIR}/voltoolbox")

@@ -5,7 +5,7 @@
 namespace py = pybind11;
 using namespace voltlbx;
 
-PYBIND11_MODULE(voltoolbox, m) {
+PYBIND11_MODULE(_voltoolbox, m) {
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;
