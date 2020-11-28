@@ -1,4 +1,5 @@
 package_add_test (voltlbx_test
+                  test_black_scholes.cpp
                   test_cubic_spline.cpp
                   test_hyp_integral.cpp
                   test_jet.cpp

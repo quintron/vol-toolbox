@@ -1,4 +1,6 @@
 add_library (VolTlbx
+             black_scholes.h
+             black_scholes.cpp
              cubic_spline.h
              cubic_spline.cpp
              hyp_integral.h
@@ -26,4 +28,4 @@ target_compile_features(VolTlbx PRIVATE cxx_std_17)
                        
 target_link_libraries (VolTlbx
                        PUBLIC Eigen3::Eigen3                       
-                       PRIVATE cminpack)
+                       PRIVATE cminpack LetsBeRational)
