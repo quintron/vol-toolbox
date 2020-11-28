@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <voltlbx/black_scholes.h>
-#include <voltlbx\utils.h>
+#include <voltlbx/utils.h>
 #include <cmath>
 
 using namespace voltlbx;
