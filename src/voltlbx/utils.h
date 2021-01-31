@@ -40,9 +40,9 @@ namespace voltlbx
     }
 
 
-    /*! Return the longest sequence of integer a[i] s.t. : 
-        1. 0 <= a[i] < N
-        2. pred(a[i], a[i+1]) is true
+    /*! Return the longest sequence of indexes i s.t. : 
+        1. 0 <= i < N
+        2. pred(i, i + 1) is true
     */
     template<typename BinaryPredicate>
     std::vector<std::size_t> longest_chain(std::size_t N, BinaryPredicate&& pred)
@@ -50,7 +50,7 @@ namespace voltlbx
         if (N == 0)
             return {};
         
-        // ls[i] will contain the size of longest chain with endpoint a[i]
+        //Build an array ls s.t. ls[i] is the size of longest chain with endpoint i
         std::vector<std::size_t> ls(N, 1);
         for (std::size_t i = 1; i < N; ++i)
         {

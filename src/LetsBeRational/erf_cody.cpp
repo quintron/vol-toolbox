@@ -21,7 +21,7 @@
 #define _SECURE_SCL 1
 #define _SECURE_SCL_THROWS 1
 #define _SCL_SECURE_NO_WARNINGS
-#define _HAS_ITERATOR_DEBUGGING 0
+//#define _HAS_ITERATOR_DEBUGGING 0
 #else
 #define _SECURE_SCL 0
 #endif
