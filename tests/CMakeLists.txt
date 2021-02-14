@@ -6,6 +6,7 @@ package_add_test (voltlbx_test
                   test_linear_filter.cpp
                   test_optim.cpp
                   test_roots.cpp
+                  test_time_point.cpp
                   test_utils.cpp				  
                   test_add.cpp)
 target_compile_features(voltlbx_test PRIVATE cxx_std_17)

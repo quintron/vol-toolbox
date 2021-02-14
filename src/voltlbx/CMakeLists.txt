@@ -15,6 +15,8 @@ add_library (VolTlbx
              roots.cpp
              smile.h
              smile.cpp
+             time_utils.h
+             time_utils.cpp
              utils.h
              utils.cpp
              hello.h
@@ -25,7 +27,8 @@ target_include_directories (VolTlbx
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>) 
 
 target_compile_features(VolTlbx PRIVATE cxx_std_17)
-                       
+
 target_link_libraries (VolTlbx
-                       PUBLIC Eigen3::Eigen3                       
-                       PRIVATE cminpack LetsBeRational)
+                       PUBLIC Eigen3::Eigen3 date::date
+                       PRIVATE cminpack LetsBeRational )
+ 
