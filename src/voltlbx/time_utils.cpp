@@ -22,11 +22,11 @@ namespace voltlbx
 
 
     DateTime utc_datetime(unsigned year,
-                            unsigned month,
-                            unsigned day,
-                            unsigned hour,
-                            unsigned minute,
-                            unsigned sec)
+                          unsigned month,
+                          unsigned day,
+                          unsigned hour,
+                          unsigned minute,
+                          unsigned sec)
     {        
         auto t_loc = create_date(year, month, day)
                     + std::chrono::hours(hour)
@@ -98,7 +98,7 @@ namespace voltlbx
                 auto wd = date::year_month_weekday{ h }.weekday();
                 if (!closed_weekdays[wd.c_encoding()])
                 {
-                    week_holidays.insert(h);
+                    week_holidays.push_back(h);
                 }
             }
 
@@ -110,11 +110,11 @@ namespace voltlbx
             if (nb_open_weekdays == 0)
                 return 0;
 
-            auto ymd1 = date::year_month_weekday{ start };
-            auto ymd2 = date::year_month_weekday{ end };
+            auto ymd1 = date::year_month_weekday{ start }.weekday();
+            auto ymd2 = date::year_month_weekday{ end }.weekday();
 
-            auto d1 = ymd1.weekday().c_encoding();
-            auto d2 = ymd2.weekday().c_encoding();
+            auto d1 = ymd1.c_encoding();
+            auto d2 = ymd2.c_encoding();
 
             int weeks = (end - start).count() / 7;
             int adjustment = weekday_adjustments[d1][d2];
@@ -123,11 +123,13 @@ namespace voltlbx
         }
 
         int count_holidays(const Date& start,
-                                const Date& end) const
+                           const Date& end) const
         {
-            auto i0 = week_holidays.lower_bound(start);
-            auto i1 = week_holidays.lower_bound(end);
-            return std::distance(i0, i1);
+            auto i0 = std::lower_bound(std::begin(week_holidays), std::end(week_holidays), start);
+            auto i1 = std::lower_bound(std::begin(week_holidays), std::end(week_holidays), end);
+            return i1 - i0;
+            
+            //return std::distance(i0, i1);
         }
 
         int open_days_count(const Date& start, const Date& end) const
@@ -144,10 +146,27 @@ namespace voltlbx
             return open_days;
         }
 
+        bool is_closed(const chrono::Date d) const
+        {
+            auto wd = date::year_month_weekday{ d }.weekday();
+            bool is_close_wd = closed_weekdays[wd.c_encoding()];
+            
+            if(is_close_wd) 
+                return true;
+
+            // Search for first element x such that d =< x
+            auto it = std::lower_bound(std::begin(week_holidays), std::end(week_holidays), d);
+            if (it != std::end(week_holidays))
+            {
+                return d == *it;
+            }
+            return false;
+        }
+
         std::array<bool, 7> closed_weekdays;
         int nb_open_weekdays;
         std::array<std::array<int, 7>, 7> weekday_adjustments;
-        std::set<Date> week_holidays;
+        std::vector<Date> week_holidays;
     };
 
 
@@ -157,9 +176,80 @@ namespace voltlbx
     {
     }
 
-    int Calendar::open_days_count(const Date& start, const Date& end) const
+    Calendar::Calendar(const std::vector<chrono::Date>& holidays)
+        :Calendar({ date::Saturday , date::Sunday }, holidays)
+    {
+    }
+
+    int Calendar::count_open_days(const Date& start, const Date& end) const
     {
         return impl->open_days_count(start, end);
+    }
+
+    bool Calendar::is_closed(const chrono::Date d) const
+    {
+        return impl->is_closed(d);
+    }
+
+    template<>
+    struct Pimpl<BusinessTimeMeasure>::Implementation    
+    {
+        Implementation(std::shared_ptr<Calendar> calendar, 
+                       double close_weight, 
+                       double yearly_nb_open)
+            : calendar(std::move(calendar)),
+            close_weight(close_weight),
+            yearly_nb_open(yearly_nb_open)
+        {}
+
+        double open_to_open(const Date& d0, const Date& d1) const
+        {
+            const int open_days = calendar->count_open_days(d0, d1);
+            const int total_days = (d1 - d0).count();
+            const int close_days = total_days - open_days;
+            return open_days + close_days * close_weight;
+        }
+
+        double distance_to_open(const DateTime& t) const
+        {
+            using namespace std::chrono;
+
+            const auto d = to_date(t);
+            const double weight = calendar->is_closed(d) ? close_weight : 1.0;
+            return weight * duration_cast<seconds>(t - d).count() / (24 * 3600.0);
+        }
+
+        double norm() const
+        {
+            return yearly_nb_open + close_weight * (365.0 - yearly_nb_open);
+        }
+
+        double distance(const DateTime& t0, const DateTime& t1) const
+        {
+            const auto d0 = to_date(t0);
+            const auto d1 = to_date(t1);
+            double dist = open_to_open(d0, d1) 
+                            - distance_to_open(t0) 
+                            + distance_to_open(t1);
+            return dist / norm();
+        }
+
+        const std::shared_ptr<Calendar> calendar;
+        const double close_weight;
+        const double yearly_nb_open;
+    };
+
+    BusinessTimeMeasure::BusinessTimeMeasure
+        (std::shared_ptr<Calendar> calendar,
+         double close_weight,
+         double yearly_nb_open)
+        :Pimpl<BusinessTimeMeasure>(calendar, close_weight, yearly_nb_open)
+    {
+    }
+
+    double BusinessTimeMeasure::distance(const DateTime& t0, const DateTime& t1) const
+    {
+        return impl->distance(t0, t1);
     }
 
 }

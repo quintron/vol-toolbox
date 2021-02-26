@@ -45,7 +45,22 @@ namespace voltlbx
         Calendar(const std::vector<date::weekday>& close_week_days,
                  const std::vector<chrono::Date>& holidays);
 
-        int open_days_count(const chrono::Date& start, const chrono::Date& end) const;
+        Calendar(const std::vector<chrono::Date>& holidays);
+
+        int count_open_days(const chrono::Date& start, const chrono::Date& end) const;
+
+        bool is_closed(const chrono::Date d) const;
+    };
+
+
+    class BusinessTimeMeasure : public Pimpl<BusinessTimeMeasure>
+    {
+    public:
+        BusinessTimeMeasure(std::shared_ptr<Calendar> calendar,
+                            double close_weight, 
+                            double yearly_nb_open);
+
+        double distance(const chrono::DateTime& t0, const chrono::DateTime& t1) const;
     };
 
 }
