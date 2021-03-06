@@ -3,6 +3,8 @@ add_library (VolTlbx
              black_scholes.cpp
              cubic_spline.h
              cubic_spline.cpp
+             date_utils.h
+             date_utils.cpp
              hyp_integral.h
              hyp_integral.cpp
              jet.h             
@@ -15,8 +17,8 @@ add_library (VolTlbx
              roots.cpp
              smile.h
              smile.cpp
-             time_utils.h
-             time_utils.cpp
+             time.h
+             time.cpp
              utils.h
              utils.cpp
              hello.h
