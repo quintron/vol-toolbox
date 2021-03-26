@@ -48,17 +48,21 @@ PYBIND11_MODULE(_voltoolbox, m) {
              py::arg("calendar"), py::arg("close_weight"), py::arg("yearly_nb_open"))
         .def("distance", &BusinessTimeMeasure::distance, py::arg("t0"), py::arg("t1"));
 
-        
-    py::class_<Smile>(m, "Smile")
-        .def("vol", &Smile::vol, py::arg("x"))
-        .def("density_ratio", &Smile::density_ratio, py::arg("x"))
-        .def("pseudo_local_vol", &Smile::pseudo_local_vol, py::arg("x"));
+
+    py::class_<SmileCurve>(m, "Smile")
+        .def("vol", &SmileCurve::vol, py::arg("x"))
+        .def("vol_jet", 
+            [](const SmileCurve& s, double x)
+            {
+                auto j = s.vol_jet(x);
+                return std::make_tuple(j.y, j.dy_dx, j.d2y_d2x);
+            },
+            py::arg("x"));
 
 
-    py::class_<CubicSplineSmile, Smile>(m, "CubicSplineSmile")
-        .def(py::init<double, double, std::vector<double>, std::vector<double>>(),
-             py::arg("time_to_maturity"), py::arg("atf_vol"), py::arg("zs"), py::arg("vol_ratios"));
-
+    py::class_<SplineSmileCurve, SmileCurve>(m, "SplineSmileCurve")
+        .def(py::init<std::vector<double>, std::vector<double>>(),
+             py::arg("xs"), py::arg("vols"));
 
 }
 
