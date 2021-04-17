@@ -23,6 +23,7 @@ __pycache__/
 *$py.class
 *.coverage
 *.egg-info*
+/.venv
 
 #NOTEBOOK
 *.ipynb_checkpoints*
