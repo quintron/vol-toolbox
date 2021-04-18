@@ -3,6 +3,7 @@
 
 #include <voltlbx/smile.h>
 #include <voltlbx/time.h>
+#include <voltlbx/black_scholes.h>
 #include "time.cpp"
 
 namespace py = pybind11;
@@ -64,6 +65,9 @@ PYBIND11_MODULE(_voltoolbox, m) {
         .def(py::init<std::vector<double>, std::vector<double>>(),
              py::arg("xs"), py::arg("vols"));
 
+
+    m.def("bs_implied_volatility", &voltlbx::bs_implied_volatility,  
+          py::arg("forward"), py::arg("strike"), py::arg("price"), py::arg("time"), py::arg("option_type"),
+          "Compute Black-Scholes implied volatility");
+
 }
-
-
