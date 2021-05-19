@@ -1,10 +1,13 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <voltlbx/utils.h>
 #include <voltlbx/smile.h>
 #include <voltlbx/time.h>
 #include <voltlbx/black_scholes.h>
 #include "time.cpp"
+
+#include <vector>
 
 namespace py = pybind11;
 using namespace voltlbx;
@@ -18,6 +21,15 @@ namespace voltlbx_bind
     auto check_date(const chrono::Date& d)
     {
         return d;
+    }
+
+    auto longest_increasing_subsequence(const std::vector<double>& xs)
+    {
+        auto indexes = voltlbx::longest_increasing_subsequence(xs);
+        return voltlbx::map(indexes, [](std::size_t i)
+        {
+            return static_cast<int>(i);
+        });
     }
 }
 
@@ -33,6 +45,9 @@ PYBIND11_MODULE(_voltoolbox, m) {
     m.def("check_datetime", &voltlbx_bind::check_datetime, "A datetime test function");
     m.def("check_date", &voltlbx_bind::check_date, "A date test function");
 
+    m.def("longest_increasing_subsequence",
+          &voltlbx_bind::longest_increasing_subsequence,
+          "Return indexes of longest increasing subsequence");
 
     py::class_<Calendar, std::shared_ptr<Calendar>>(m, "Calendar")
         .def(py::init<std::vector<chrono::Date>>(), py::arg("holidays"))

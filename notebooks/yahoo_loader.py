@@ -1,8 +1,10 @@
+import requests
+import pytz
 import datetime as dt
 import numpy as np
-import requests
-from pandas_datareader.yahoo.options import Options
+
 from bs4 import BeautifulSoup
+from pandas_datareader.yahoo.options import Options
 from voltoolbox.fit.option_quotes  import OptionSnapshot, OptionQuoteSlice, QuoteSlice
 
 
@@ -13,9 +15,26 @@ _SYMBOLS = {
 }
 
 
+PM_SETTLEMENT = (dt.time(15, 0), pytz.timezone('US/Eastern'))
+
+AM_SETTLEMENT = (dt.time(9, 30), pytz.timezone('US/Eastern'))
+
+AM_SETTLEMENT_SYMBOLS = ('spx', )
+
+
+def option_settlement_datetime(expiry: dt.date, symbol: str):  
+    if str.lower(symbol) in AM_SETTLEMENT_SYMBOLS:
+        exp_time, tz = AM_SETTLEMENT
+    else:
+        exp_time, tz = PM_SETTLEMENT
+
+    exp_dt = dt.datetime.combine(expiry, exp_time, tz)
+    return exp_dt.astimezone(pytz.UTC)
+
+
 def _datetime64_to_datetime(dt64):
     ts = (dt64 - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
-    return dt.datetime.utcfromtimestamp(ts)
+    return pytz.UTC.localize(dt.datetime.utcfromtimestamp(ts))
 
 
 def snap_options(symbol) -> OptionSnapshot:
@@ -45,7 +64,7 @@ def snap_options(symbol) -> OptionSnapshot:
                                tuple(puts.Bid.values),
                                tuple(puts.Ask.values))
 
-        expiry = exp.date()  # TODO add expiration time
+        expiry = option_settlement_datetime(exp.date(), root)
         slices.append(OptionQuoteSlice(root, expiry, call_slice, put_slice))
 
     ref_spot = float(option_table.Underlying_Price.median())

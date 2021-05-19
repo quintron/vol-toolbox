@@ -36,14 +36,14 @@ class QuoteSlice(JsonableObject):
 @dataclass(frozen=True)
 class OptionQuoteSlice(JsonableObject):
     symbol: str
-    expiry: date    
+    expiry: datetime
     call : QuoteSlice
     put : QuoteSlice
 
     @classmethod
     def from_json_dict(cls, json_dict):
         return cls(str(json_dict['symbol']),
-                   date.fromisoformat(json_dict['expiry']),
+                   datetime.fromisoformat(json_dict['expiry']),
                    QuoteSlice.from_json_dict(json_dict['call']),
                    QuoteSlice.from_json_dict(json_dict['put']))
 
