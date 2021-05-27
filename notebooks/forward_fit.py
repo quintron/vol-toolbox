@@ -2,14 +2,12 @@ import math
 import numpy as np
 import datetime as dt
 from typing import Dict, Optional
+
 from voltoolbox import BusinessTimeMeasure, longest_increasing_subsequence, bs_implied_volatility
 from voltoolbox.fit.option_quotes import OptionSnapshot, OptionQuoteSlice, QuoteSlice
 from voltoolbox.calendar import nyse_calendar
 
-
-def act365_time(t0: dt.datetime, t1: dt.datetime):
-    delta = t1 - t0
-    return (delta.days + delta.seconds / 86400.0) / 365.0
+from fit_utils import act365_time
 
 
 def prepare_quotes_for_fit(quote_slice: OptionQuoteSlice, 
@@ -49,9 +47,10 @@ def prepare_quotes_for_fit(quote_slice: OptionQuoteSlice,
     filt_put_sl = QuoteSlice(tuple(put_ks[filter_][inc_subseq]),
                              tuple(put_bid[filter_][inc_subseq]),
                              tuple(put_ask[filter_][inc_subseq]))
-    
+
     return OptionQuoteSlice(quote_slice.symbol, 
                             quote_slice.expiry,
+                            1.0,
                             filt_call_sl, 
                             filt_put_sl)
 
@@ -124,11 +123,10 @@ def fit_forward_curve(quotes: OptionSnapshot) -> Dict[dt.datetime, float]:
 
         if (quote_sl.expiry < pricing_dt):
             continue
-        
-        discount = 1.0 # TODO
+
         quote_sl = prepare_quotes_for_fit(quote_sl,
                                           pricing_dt,
-                                          discount,
+                                          quote_sl.discount,
                                           quotes.ref_spot,
                                           yield_threshold=0.05)
 

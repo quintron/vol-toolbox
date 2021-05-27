@@ -37,13 +37,16 @@ class QuoteSlice(JsonableObject):
 class OptionQuoteSlice(JsonableObject):
     symbol: str
     expiry: datetime
+    discount: float
     call : QuoteSlice
     put : QuoteSlice
 
     @classmethod
     def from_json_dict(cls, json_dict):
+        discount = float(json_dict.get('discount', 1.0))
         return cls(str(json_dict['symbol']),
                    datetime.fromisoformat(json_dict['expiry']),
+                   discount,
                    QuoteSlice.from_json_dict(json_dict['call']),
                    QuoteSlice.from_json_dict(json_dict['put']))
 
@@ -51,13 +54,13 @@ class OptionQuoteSlice(JsonableObject):
 @dataclass(frozen=True)
 class OptionSnapshot(JsonableObject):
     time_stamp: datetime
-    ref_spot: float
+    ref_spot: float    
     slices: List[OptionQuoteSlice]
 
     @classmethod
     def from_json_dict(cls, json_dict):
         slices = [OptionQuoteSlice.from_json_dict(sl) 
-                  for sl in json_dict['slices']]
+                  for sl in json_dict['slices']]        
         return cls(datetime.fromisoformat(json_dict['time_stamp']),
                    float(json_dict['ref_spot']),
                    slices)

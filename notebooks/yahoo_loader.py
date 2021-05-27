@@ -1,12 +1,13 @@
 import requests
 import pytz
+import math
 import datetime as dt
 import numpy as np
 
 from bs4 import BeautifulSoup
 from pandas_datareader.yahoo.options import Options
 from voltoolbox.fit.option_quotes  import OptionSnapshot, OptionQuoteSlice, QuoteSlice
-
+from fit_utils import act365_time
 
 _SYMBOLS = {
     'spx' : '%5ESPX',
@@ -38,10 +39,11 @@ def _datetime64_to_datetime(dt64):
 
 
 def snap_options(symbol) -> OptionSnapshot:
+    
+    #Load option from yahoo
     yahoo_symb = _SYMBOLS.get(str.lower(symbol), None)
     if yahoo_symb is None:
         raise Exception(f'Unknown symbol {symbol}')
-
     opt = Options(yahoo_symb)
     option_yahoo_df = opt.get_all_data()
     # filter useful information
@@ -49,7 +51,11 @@ def snap_options(symbol) -> OptionSnapshot:
     # filter useless quotes
     option_yahoo_df = option_yahoo_df[(option_yahoo_df.Bid > 0.0) | (option_yahoo_df.Ask > 0.0)]
     option_table = option_yahoo_df.groupby(['Expiry','Root', 'Type', 'Strike']).first()
-
+    
+    #Load rate curve
+    rate_crv = snap_ois_rate_curve()
+    
+    time_stamp = _datetime64_to_datetime(max(t for t in option_table.Quote_Time.values))
     slices = []
     slices_keys = sorted({(exp, root) for exp, root, _, _ in option_table.index})
     for exp, root in slices_keys:
@@ -65,10 +71,12 @@ def snap_options(symbol) -> OptionSnapshot:
                                tuple(puts.Ask.values))
 
         expiry = option_settlement_datetime(exp.date(), root)
-        slices.append(OptionQuoteSlice(root, expiry, call_slice, put_slice))
+        t = act365_time(time_stamp, expiry)
+        discount = discount_zero_coupon(t, rate_crv)
 
-    ref_spot = float(option_table.Underlying_Price.median())
-    time_stamp = _datetime64_to_datetime(max(t for t in option_table.Quote_Time.values))
+        slices.append(OptionQuoteSlice(root, expiry, discount, call_slice, put_slice))
+
+    ref_spot = float(option_table.Underlying_Price.median())    
     return OptionSnapshot(time_stamp, ref_spot, slices)
 
 
@@ -100,3 +108,9 @@ def snap_ois_rate_curve():
     years = (1 / 12, 3 / 12, 6 / 12, 12 / 12, 24 / 12, 36 / 12, 60 / 12, 84 / 12, 120 / 12, 240 / 12, 360 / 12)
     rates = (m1 / 100, m3 / 100, m6 / 100, y1 / 100, y2 / 100, y3 / 100, y5 / 100, y7 / 100, y10 / 100, y20 / 100, y30 / 100)
     return dict(zip(years, rates))
+
+
+def discount_zero_coupon(t, rate_crv):
+    ts = np.array(list(rate_crv.keys()))
+    y =  np.interp(t, ts, ts * np.array(list(rate_crv.values())))
+    return math.exp(-y)
