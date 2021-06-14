@@ -103,16 +103,17 @@ class OptionKernelRegression:
 
         var = np.matmul((basis * b_ws).T, basis * b_ws)
         var_regul = self.smoothing * var.trace() / float(var.shape[0]) * np.identity(var.shape[0])
-        var_regul[0,0] = 0.0  # dont need to smooth slope
-        var_regul[1,1] = 0.0  # dont need to smooth convexity       
-        var += var_regul 
+        var_regul[0, 0] = 0.0
+        var_regul[1, 1] = 0.0
+        var += var_regul
 
         cov = (basis * b_ws).T.dot(self.put_target * ws)
         coeffs = np.linalg.solve(var, cov)
         return (coeffs[0] - k), coeffs[1]
 
 
-def fit_forward_curve(quotes: OptionSnapshot) -> Dict[dt.datetime, float]:
+def fit_forward_curve(quotes: OptionSnapshot, 
+                      box_spread: float) -> Dict[dt.datetime, float]:
 
     business_time = BusinessTimeMeasure(nyse_calendar(), 0.5, 252.0)
     pricing_dt = quotes.time_stamp
@@ -123,10 +124,11 @@ def fit_forward_curve(quotes: OptionSnapshot) -> Dict[dt.datetime, float]:
 
         if (quote_sl.expiry < pricing_dt):
             continue
-
+        
+        discount = quote_sl.discount * math.exp(-box_spread * act365_time(pricing_dt, quote_sl.expiry))
         quote_sl = prepare_quotes_for_fit(quote_sl,
                                           pricing_dt,
-                                          quote_sl.discount,
+                                          discount,
                                           quotes.ref_spot,
                                           yield_threshold=0.05)
 
