@@ -58,18 +58,30 @@ def snap_options(symbol) -> OptionSnapshot:
     time_stamp = _datetime64_to_datetime(max(t for t in option_table.Quote_Time.values))
     slices = []
     slices_keys = sorted({(exp, root) for exp, root, _, _ in option_table.index})
-    for exp, root in slices_keys:
+    for key in slices_keys:
+        key_options = option_table.loc[key]
+        
+        if ('call',) in key_options.index: 
+            calls = key_options.loc[('call',)]
+            call_slice = QuoteSlice(tuple(calls.index.values),
+                                    tuple(calls.Bid.values),
+                                    tuple(calls.Ask.values))
+        else:
+            call_slice = QuoteSlice(tuple(),
+                                    tuple(),
+                                    tuple())
 
-        calls = option_table.loc[(exp, root, 'call')]
-        call_slice = QuoteSlice(tuple(calls.index.values),
-                                tuple(calls.Bid.values),
-                                tuple(calls.Ask.values))
+        if ('put',) in key_options.index:
+            puts = key_options.loc[('put',)]
+            put_slice = QuoteSlice(tuple(puts.index.values),
+                                   tuple(puts.Bid.values),
+                                   tuple(puts.Ask.values))
+        else:
+            put_slice = QuoteSlice(tuple(),
+                                   tuple(),
+                                   tuple())
 
-        puts = option_table.loc[(exp, root, 'put')]
-        put_slice = QuoteSlice(tuple(puts.index.values),
-                               tuple(puts.Bid.values),
-                               tuple(puts.Ask.values))
-
+        exp, root = key
         expiry = option_settlement_datetime(exp.date(), root)
         t = act365_time(time_stamp, expiry)
         discount = discount_zero_coupon(t, rate_crv)
