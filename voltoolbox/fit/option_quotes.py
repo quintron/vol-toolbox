@@ -65,3 +65,20 @@ class OptionSnapshot(JsonableObject):
                    float(json_dict['ref_spot']),
                    slices)
 
+
+@dataclass(frozen=True)
+class VolSlice(JsonableObject):
+    log_moneyness: Tuple[float]
+    mids: Tuple[float]
+    errs: Tuple[float]
+
+
+@dataclass(frozen=True)
+class VolQuoteSlice(JsonableObject):
+    symbol: str
+    expiry: datetime
+    time_to_maturity: float
+    forward: float
+
+    call : VolSlice
+    put : VolSlice

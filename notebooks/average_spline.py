@@ -9,28 +9,29 @@ def avg(f, z):
 
 class AverageSpline(object):
     
-    def __init__(self, *zs):
-        assert(len(zs) > 1)
-        self.zs = tuple(zs)
+    def __init__(self, put_zs, call_zs):
+        assert(len(put_zs) > 1 and len(call_zs) > 1)
+        self.put_zs = tuple(put_zs)
+        self.call_zs = tuple(call_zs)
     
     def put_wing(self, i, z):
-        assert(0 <= i < len(self.zs) - 1)   
+        assert(0 <= i < len(self.put_zs) - 1)   
         if i == 0:
-            a, b, c = (-self.zs[1], -self.zs[0], 0.0)
+            a, b, c = (-self.put_zs[1], -self.put_zs[0], 0.0)
         else:
-            a, b, c = (-self.zs[i+1], -self.zs[i], -self.zs[i-1])
+            a, b, c = (-self.put_zs[i+1], -self.put_zs[i], -self.put_zs[i-1])
         
         res = (max(0, c - z)**3 - max(0, b - z)**3) / (c - b)
         res -= (max(0, b - z)**3 -max(0, a - z)**3) / (b - a)
         return res / 6.0
     
     def call_wing(self, i, z):
-        assert(0 <= i < len(self.zs) - 1)       
+        assert(0 <= i < len(self.call_zs) - 1)       
         if i==0:
-            a, b, c = (0.0, self.zs[0], self.zs[1])
+            a, b, c = (0.0, self.call_zs[0], self.call_zs[1])
         else:
-            a, b, c = (self.zs[i-1], self.zs[i], self.zs[i+1])
-        
+            a, b, c = (self.call_zs[i-1], self.call_zs[i], self.call_zs[i+1])
+
         res = (max(0, z - a)**3 -max(0, z - b)**3) / (b - a)
         res -= (max(0, z - b)**3 -max(0, z - c)**3) / (c - b)
         return res / 6.0
@@ -66,18 +67,20 @@ class AverageSpline(object):
         vals = [np.array([1.0] * xs.shape[0]),
                 np.vectorize(self.slope_avg)(xs), 
                 np.vectorize(self.convex_avg)(xs)]
-        for i in range(0, len(self.zs) - 1):
-            vals += [np.vectorize(lambda x: self.call_wing_avg(i, x))(xs), 
-                     np.vectorize(lambda x: self.put_wing_avg(i, x))(xs)]
+        for i in range(0, len(self.call_zs) - 1):
+            vals += [np.vectorize(lambda x: self.call_wing_avg(i, x))(xs)]
+        for i in range(0, len(self.put_zs) - 1):
+            vals += [np.vectorize(lambda x: self.put_wing_avg(i, x))(xs)]
         return np.column_stack(vals)
     
     def compute_vals(self, xs):
         vals = [np.array([1.0] * xs.shape[0]),
                 np.vectorize(self.slope)(xs), 
                 np.vectorize(self.convex)(xs)]
-        for i in range(0, len(self.zs) - 1):
-            vals += [np.vectorize(lambda x: self.call_wing(i, x))(xs), 
-                     np.vectorize(lambda x: self.put_wing(i, x))(xs)]
+        for i in range(0, len(self.call_zs) - 1):
+            vals += [np.vectorize(lambda x: self.call_wing(i, x))(xs)]
+        for i in range(0, len(self.put_zs) - 1):
+            vals += [np.vectorize(lambda x: self.put_wing(i, x))(xs)]
         return np.column_stack(vals)
 
     def fit_coeffs(self, xs, vals, errs=None, *, smoothing=1.0e-12):        
