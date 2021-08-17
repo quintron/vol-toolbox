@@ -1,11 +1,14 @@
 import math
 import datetime as dt
-from typing import Union, Tuple
 import numpy as np
 
+from typing import Tuple, Dict
+from dataclasses import dataclass
+from scipy.optimize import least_squares
 from voltoolbox import BusinessTimeMeasure, bs_implied_volatility, longest_increasing_subsequence
 from voltoolbox.fit.option_quotes import OptionQuoteSlice, QuoteSlice, VolQuoteSlice, VolSlice
 from fit_utils import act365_time, filter_quotes
+from average_spline import AverageSpline
 
 
 def _slice_implied_vol(quotes: QuoteSlice,
@@ -122,3 +125,121 @@ def prepare_target_vol(vol_slice: VolQuoteSlice )-> VolSlice:
     target_vols = VolSlice(xs, mids, errs)
     target_vols = filter_vol_slice(target_vols, vol_slice.time_to_maturity, 0.5, (-10.0, 10.0))
     return target_vols
+
+
+@dataclass(frozen=True)
+class TargetSlice():
+    t: float
+    zs: np.array
+    mids: np.array
+    errs: np.array
+
+    @classmethod
+    def create(cls, vol_sl: VolQuoteSlice):
+        target_vols = prepare_target_vol(vol_sl)
+        mids = np.array(target_vols.mids)
+        zs = np.array(target_vols.log_moneyness) / (math.sqrt(vol_sl.time_to_maturity) * mids)
+        return cls(vol_sl.time_to_maturity, zs, mids, np.array(target_vols.errs))
+
+
+def fit_atm_vol(target_sl: TargetSlice, 
+                *, fit_width: float=0.6) -> Tuple[float, float]:
+    target_zs = target_sl.zs
+    target_mids = target_sl.mids
+    target_errs = target_sl.errs
+
+    for i in range(0, 3):
+        atm_mask = (target_zs > -fit_width) & (target_zs < fit_width)
+        target_zs = target_zs[atm_mask]
+        
+        if len(target_zs) > 4: # Enough strike
+            target_mids = target_mids[atm_mask]
+            target_errs = target_errs[atm_mask]
+            weights = (np.maximum(0.0, 1.0 - (target_zs / fit_width))**2.0) * 3.0 / 4.0  # Epanechnikov kernel
+            break
+        else: # rescale with larger fit_width 
+            fit_width *= 1.6
+            target_zs = target_sl.zs
+
+    avg_spline = AverageSpline()
+    coeffs = avg_spline.fit_coeffs(target_zs, target_mids, target_errs / np.sqrt(weights), smoothing = 2.0e-7)
+
+    atm_vol = avg_spline.compute_vals(np.array([0.0])).dot(coeffs)[0]
+
+    fitted_targets = avg_spline.compute_avg_vals(target_zs).dot(coeffs)
+    atm_vol_err = ((target_errs + np.abs(target_mids - fitted_targets)) * weights).sum() / weights.sum()
+
+    return (atm_vol, atm_vol_err)
+
+    
+class VolCurveFitFunction:
+
+    def __init__(self, ts, vols, errs, smoothing):
+        assert len(ts)==len(vols)==len(errs)
+        self.ts = np.array(ts)
+        self.vols = vols
+        self.errs = errs
+        self.smoothing = smoothing
+
+        ref_fwd_vars = [] 
+        prev_t = 0.0
+        prev_var = 0.0
+        for t, v in zip(ts, vols):
+            fwd_var = np.maximum(0.10 * v * (t - prev_t), (t * v**2 - prev_var))
+            prev_t = t
+            prev_var += fwd_var
+            ref_fwd_vars.append(fwd_var)
+        self.ref_fwd_vars = np.array(ref_fwd_vars)
+
+    def fwd_vars(self, xs):
+        return self.ref_fwd_vars * np.exp(xs)
+
+    def vol_curve(self, xs):
+        fwd_vars = self.fwd_vars(xs)
+        vars = []
+        current_var = 0.0
+        for fwd_var in fwd_vars:
+            current_var += fwd_var
+            vars.append(current_var)
+        return np.sqrt(np.array(vars) / self.ts)
+
+    def fwd_vol_curve(self, xs):
+        fwd_vars = self.fwd_vars(xs)
+        dts =  np.ediff1d(np.append(np.array([0.0]), self.ts))
+        return np.sqrt(fwd_vars / dts)
+
+    def fit_residuals(self, xs):
+        fit_vols = self.vol_curve(xs)
+        scores = []
+        for v, target_v, err in zip(fit_vols, self.vols, self.errs):
+            scores.append((v - target_v) / err)
+
+        #Curve smoothing penality term
+        fwd_vols = self.fwd_vol_curve(xs)
+        fwd_vol_smoothing = np.sqrt(self.smoothing) * np.ediff1d(fwd_vols) / np.ediff1d(self.ts)
+
+        return np.append(np.array(scores), fwd_vol_smoothing)
+
+    def __call__(self, xs):
+        return self.fit_residuals(xs)
+
+
+def fit_atm_vol_curve(target_slices :Dict[dt.datetime, TargetSlice],
+                      *, smoothing :float=5.0e-3) -> Dict[dt.datetime, float]:
+    ts = []
+    atm_vol_mids = []
+    atm_vol_errs = []
+    for target_sl in target_slices.values():
+        v, err = fit_atm_vol(target_sl)
+        ts.append(target_sl.t)
+        atm_vol_mids.append(v)
+        atm_vol_errs.append(err)
+
+    fit_func = VolCurveFitFunction(np.array(ts),
+                                   np.array(atm_vol_mids),
+                                   np.array(atm_vol_errs),
+                                   smoothing)    
+    x0 = np.array([0.0] * len(ts))
+    res = least_squares(fit_func, x0)
+    atm_vols = fit_func.vol_curve(res.x)
+    return dict(zip(target_sl, atm_vols))
