@@ -92,7 +92,7 @@ namespace voltlbx
             return { prediction, err };
         }
 
-        double predict(T new_input)
+        double predict(T new_input) const
         {
             auto[p, e] = predict_with_error(new_input, false);
             return p;

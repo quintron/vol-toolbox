@@ -17,6 +17,8 @@ add_library (VolTlbx
              roots.cpp
              smile.h
              smile.cpp
+             smile_filter.h
+             smile_filter.cpp
              time.h
              time.cpp
              utils.h

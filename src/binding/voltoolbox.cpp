@@ -2,9 +2,10 @@
 #include <pybind11/stl.h>
 
 #include <voltlbx/utils.h>
-#include <voltlbx/smile.h>
 #include <voltlbx/time.h>
+#include <voltlbx/smile.h>
 #include <voltlbx/black_scholes.h>
+#include <voltlbx/smile_filter.h>
 #include "time.cpp"
 
 #include <vector>
@@ -84,5 +85,11 @@ PYBIND11_MODULE(_voltoolbox, m) {
     m.def("bs_implied_volatility", &voltlbx::bs_implied_volatility,  
           py::arg("forward"), py::arg("strike"), py::arg("price"), py::arg("time"), py::arg("option_type"),
           "Compute Black-Scholes implied volatility");
+
+    py::class_<SmileVariationFilter>(m, "SmileVariationFilter")
+        .def(py::init(&SmileVariationFilter::create),
+             py::arg("zs"), py::arg("dvols"), py::arg("error_devs"), 
+             py::arg("atm_dev"), py::arg("atm_skew_dev"), py::arg("z_ref"))
+        .def("dvol_with_error", &SmileVariationFilter::dvol_with_error, py::arg("z"));
 
 }
