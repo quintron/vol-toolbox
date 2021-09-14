@@ -4,6 +4,106 @@
 
 namespace voltlbx
 {
+
+    struct OptimBracket
+    {
+        double a;
+        double b;
+        double c;
+        double fa;
+        double fb;
+        double fc;
+    };
+
+
+    template <typename F>
+    double optimize_brent(F&& func, OptimBracket& br, double tol, double* fmin = 0)
+    {
+        static const double zeps = std::numeric_limits<double>::epsilon() / 1024;
+        static const double cgold = 0.3819660;
+        double a = std::min(br.a, br.c);
+        double b = std::max(br.a, br.c);
+        double v = br.b;
+        double w = br.b;
+        double x = br.b;
+        double fv = br.fb;
+        double fw = br.fb;
+        double fx = br.fb;
+        double d = 0;
+        double e = 0;
+        auto shift3 = [](double& a, double& b, double& c, double& d) {
+            a = b;
+            b = c;
+            c = d;
+
+        };
+        for (unsigned j = 0; j < 100; j++) {
+            double xm = 0.5 * (a + b);
+            double toll = tol * std::abs(x) + zeps;
+            double tol2 = 2 * toll;
+            if (std::abs(x - xm) <= (tol2 - 0.5 * (b - a))) {
+                if (fmin)
+                    *fmin = fx;
+                return x;
+            }
+            if (std::abs(e) > toll) {
+                double r = (x - w) * (fx - fv);
+                double q = (x - v) * (fx - fw);
+                double p = (x - v) * q - (x - w) * r;
+                q = 2 * (q - r);
+                if (q > 0)
+                    p = -p;
+                q = std::abs(q);
+                double etmp = e;
+                e = d;
+                if (std::abs(p) >= std::abs(0.5 * q * etmp) || p <= q * (a - x)
+                    || p >= q * (b - q))
+                {
+                    d = cgold * (e = (x >= xm ? a - x : b - x));
+                }
+                else {
+                    d = p / q;
+                    double u = x + d;
+                    if (u - a < tol2 || b - u < tol2)
+                        d = std::copysign(toll, xm - x);
+                }
+            }
+            else {
+                d = cgold * (e = (x > xm ? a - x : b - x));
+            }
+
+            double u = std::abs(d) >= toll ? x + d : x + std::copysign(toll, d);
+            double fu = func(u);
+            if (fu <= fx) {
+                if (u >= x)
+                    a = x;
+                else
+                    b = x;
+                shift3(v, w, x, u);
+                shift3(fv, fw, fx, fu);
+
+            }
+            else {
+                if (u < x)
+                    a = u;
+                else
+                    b = u;
+                if (fu <= fw || w == x) {
+                    v = w;
+                    w = u;
+                    fv = fw;
+                    fw = fu;
+                }
+                else if (fu <= fv || v == x || v == w) {
+                    v = u;
+                    fv = fu;
+                }
+            }
+        }
+        throw std::runtime_error("tooymany_ iterations");
+    }
+
+
     class MinPackWrapper
     {
     public:

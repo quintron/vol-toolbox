@@ -3,6 +3,29 @@
 
 using namespace voltlbx;
 
+
+TEST(OptimTest, Brent)
+
+{
+    auto f = [](double x) {
+        return (x - 3) * (x - 3) + 2;
+    };
+    OptimBracket b;
+    b.a = 0;
+    b.b = 1;
+    b.c = 9;
+    b.fa = f(b.a);
+    b.fb = f(b.b);
+    b.fc = f(b.c);
+
+    static const auto tol = std::sqrt(std::numeric_limits<double>::epsilon());
+    double fmin;
+    double xmin = optimize_brent(f, b, tol, &fmin);
+    EXPECT_NEAR(xmin, 3, tol);
+    EXPECT_NEAR(fmin, 2, tol * tol);
+}
+
+
 TEST(MinPack, Optim)
 {
 
