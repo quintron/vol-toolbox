@@ -1,6 +1,11 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <functional>
+#include <limits>
+#include <stdexcept>
+#include <vector>
 
 namespace voltlbx
 {
