@@ -5,9 +5,7 @@ from typing import Dict, Optional
 
 from voltoolbox import BusinessTimeMeasure, longest_increasing_subsequence, bs_implied_volatility
 from voltoolbox.fit.option_quotes import OptionSnapshot, OptionQuoteSlice, QuoteSlice
-from voltoolbox.calendar import nyse_calendar
-
-from fit_utils import act365_time
+from voltoolbox.fit.fit_utils import act365_time
 
 
 def prepare_quotes_for_fit(quote_slice: OptionQuoteSlice, 
@@ -115,9 +113,8 @@ class OptionKernelRegression:
 def fit_forward_curve(quotes: OptionSnapshot, 
                       box_spread: float) -> Dict[dt.datetime, float]:
 
-    business_time = BusinessTimeMeasure(nyse_calendar(), 0.5, 252.0)
     pricing_dt = quotes.time_stamp
-    
+
     previous_fit_fwd = quotes.ref_spot
     forwards = {}
     for quote_sl in quotes.slices:        
@@ -132,7 +129,7 @@ def fit_forward_curve(quotes: OptionSnapshot,
                                           previous_fit_fwd,
                                           yield_threshold=0.05)
 
-        t = business_time.distance(pricing_dt, quote_sl.expiry)
+        t = act365_time(pricing_dt, quote_sl.expiry)
         dev = 0.15 * np.sqrt(t)
         kernel_width = 0.5 * dev
     

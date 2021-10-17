@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from scipy.optimize import least_squares
 from voltoolbox import BusinessTimeMeasure, bs_implied_volatility, longest_increasing_subsequence
 from voltoolbox.fit.option_quotes import OptionQuoteSlice, QuoteSlice, VolQuoteSlice, VolSlice
-from fit_utils import act365_time, filter_quotes
-from average_spline import AverageSpline
+from voltoolbox.fit.fit_utils import act365_time, filter_quotes
+from voltoolbox.fit.average_spline import AverageSpline
 
 
 def _slice_implied_vol(quotes: QuoteSlice,
