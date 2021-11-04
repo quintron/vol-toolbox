@@ -7,7 +7,7 @@ import numpy as np
 from bs4 import BeautifulSoup
 from pandas_datareader.yahoo.options import Options
 from voltoolbox.fit.option_quotes  import OptionSnapshot, OptionQuoteSlice, QuoteSlice
-from fit_utils import act365_time
+from voltoolbox.fit.fit_utils import act365_time
 
 _SYMBOLS = {
     'spx' : '%5ESPX',
@@ -16,7 +16,7 @@ _SYMBOLS = {
 }
 
 
-PM_SETTLEMENT = (dt.time(15, 0), pytz.timezone('US/Eastern'))
+PM_SETTLEMENT = (dt.time(16, 0), pytz.timezone('US/Eastern'))
 
 AM_SETTLEMENT = (dt.time(9, 30), pytz.timezone('US/Eastern'))
 
@@ -117,7 +117,7 @@ def snap_ois_rate_curve():
     y20 = float(cells[10].get_text())
     y30 = float(cells[11].get_text())
 
-    years = (1 / 12, 3 / 12, 6 / 12, 12 / 12, 24 / 12, 36 / 12, 60 / 12, 84 / 12, 120 / 12, 240 / 12, 360 / 12)
+    years = (1.0 / 12.0, 3.0 / 12.0, 6.0 / 12, 12 / 12, 24 / 12, 36 / 12, 60 / 12, 84 / 12, 120 / 12, 240 / 12, 360 / 12)
     rates = (m1 / 100, m3 / 100, m6 / 100, y1 / 100, y2 / 100, y3 / 100, y5 / 100, y7 / 100, y10 / 100, y20 / 100, y30 / 100)
     return dict(zip(years, rates))
 

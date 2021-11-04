@@ -1,11 +1,14 @@
 import math
+import bisect
 import datetime as dt
 import numpy as np
 
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Optional
 from dataclasses import dataclass
+from itertools import groupby
 from scipy.optimize import least_squares
-from voltoolbox import BusinessTimeMeasure, bs_implied_volatility, longest_increasing_subsequence
+from voltoolbox import (BusinessTimeMeasure, NormalizedSmileCurve, 
+                        bs_implied_volatility, longest_increasing_subsequence)
 from voltoolbox.fit.option_quotes import OptionQuoteSlice, QuoteSlice, VolQuoteSlice, VolSlice
 from voltoolbox.fit.fit_utils import act365_time, filter_quotes
 from voltoolbox.fit.average_spline import AverageSpline
@@ -91,13 +94,13 @@ def prepare_target_vol(vol_slice: VolQuoteSlice )-> VolSlice:
     merged_datas = [vol_datas[0]]
     prev_q = vol_datas[0]
     for q in vol_datas[1:]:
-        
-        if abs(q[0] - prev_q[0]) > 1.0e-5:
-            merged_datas.append((q[0], q[1], q[2]))
+        log_moneyness, mid, err, opt_type = q
+        if abs(log_moneyness - prev_q[0]) > 1.0e-5:
+            merged_datas.append((log_moneyness, mid, err))
         else:            
-            if q[3]=='c':
+            if opt_type=='c':
                 assert(prev_q[3]=='p')
-                if q[0] < 0.0:
+                if log_moneyness < 0.0:
                     q0 = prev_q
                     q1 = q
                 else:
@@ -105,7 +108,7 @@ def prepare_target_vol(vol_slice: VolQuoteSlice )-> VolSlice:
                     q1 = prev_q                
             else :
                 assert(prev_q[3]=='c')
-                if q[0] < 0.0:
+                if log_moneyness < 0.0:
                     q0 = q
                     q1 = prev_q
                 else:
@@ -242,4 +245,113 @@ def fit_atm_vol_curve(target_slices :Dict[dt.datetime, TargetSlice],
     x0 = np.array([0.0] * len(ts))
     res = least_squares(fit_func, x0)
     atm_vols = fit_func.vol_curve(res.x)
-    return dict(zip(target_sl, atm_vols))
+    return dict(zip(target_slices, atm_vols))
+
+
+def sorted_fit_expiries(target_slices):
+    slice_score_infos = {}
+    for expi_dt, target_sl in target_slices.items():
+        err_med = np.median(target_sl.errs)
+        nb_strikes = len(target_sl.zs)
+
+        bulk_zs = target_sl.zs[ np.abs(target_sl.zs) < 2.5]
+        width = 0.5 *(abs(min(bulk_zs)) + max(bulk_zs))
+        max_diff = np.diff(bulk_zs).max()
+        unif_diff = (max(bulk_zs) - min(bulk_zs)) / (len(bulk_zs) - 1)
+        strike_uniformity =  max_diff / unif_diff
+
+        slice_score_infos[expi_dt] = (width, err_med, nb_strikes, strike_uniformity)
+
+    wing_score_threshold = np.median(np.array([w for w, _, _, _ in slice_score_infos.values()]))
+    err_score_threshold = 2.0 * np.quantile(np.array([e for _, e, _, _ in slice_score_infos.values()]), 0.75)
+    nb_strike_threshold = 0.75 * np.median(np.array([n for _, _, n, _ in slice_score_infos.values()]))
+    strike_uniform_threshold = np.quantile(np.array([u for _, _, _, u in slice_score_infos.values()]), 0.5)
+
+    slices_scores = {}
+    for expi_dt, infos in slice_score_infos.items():
+        width, err, nb_strikes, strike_uniformity = infos    
+        # Score  1s build on three criteria : wing width, nb strikes, wvol spread(error) median
+        # Weight on each criteria is chosen so that :
+        #   1. wing width is more important that nb strike and vol spread
+        #   2. nb strike is more important than vol spread
+        score = 0.0
+        if (width > wing_score_threshold):
+            score += 2.0
+        
+        if (nb_strikes > nb_strike_threshold):
+            score += 0.5
+
+        if strike_uniformity < strike_uniform_threshold:
+            score += 0.5
+
+        if (err < err_score_threshold):
+            score += 0.75
+
+        slices_scores[expi_dt] = score
+
+    #sorted by decreasing score
+    res = []
+    expis = sorted(slices_scores.items(), key=lambda item : -item[1])
+    for sc, ts in groupby(expis, key=lambda item : -item[1]):
+        res += reversed(sorted(((t, s) for t, s in ts)))
+
+    return res
+
+
+@dataclass(frozen=True)
+class SmileBackbone:
+    time_to_expiry: float
+    atm_vol: float
+    zs: np.array
+    vol_ratios: np.array
+
+    def smile_curve(self):
+        vols = self.atm_vol * self.vol_ratios
+        return NormalizedSmileCurve(self.zs, vols)
+
+
+class SurfaceBackbone:
+    def __init__(self):
+        self.deviations = None
+        self.expiries = []
+        self.slices = []
+
+    def add_slice(self, smile: SmileBackbone) -> Tuple[Optional[SmileBackbone], Optional[SmileBackbone]]:
+        if self.deviations is None: 
+            self.deviations = smile.zs
+        else:
+            if not np.array_equal(self.deviations, smile.zs):
+                raise Exception('invalid slice')
+        self.slices.append(smile)
+        self.slices = sorted(self.slices, key=lambda sl: sl.time_to_expiry)
+        self.expiries = [sl.time_to_expiry for sl in self.slices]
+
+    def bounding_slices(self, t):
+        idx = bisect.bisect_left(self.expiries, t)
+
+        if idx==0:
+            return (None, self.slices[idx])
+        
+        if idx==len(self.expiries):
+            return (self.slices[idx-1], None)
+
+        return (self.slices[idx-1], self.slices[idx])
+
+    def interpolated_slice(self, t, *, atm_vol=float('nan')) -> SmileBackbone:
+        left_sl, right_sl = self.bounding_slices(t)
+
+        if right_sl is None:
+            raise Exception('no extrapolation allowed')
+
+        if left_sl is None:
+            if np.isnan(atm_vol):
+                atm_vol = right_sl.atm_vol
+            return SmileBackbone(t, atm_vol, self.deviations, right_sl.vol_ratios) 
+
+        w = (t - left_sl.time_to_expiry) / (right_sl.time_to_expiry - left_sl.time_to_expiry)
+
+        if np.isnan(atm_vol):
+            atm_vol = np.sqrt(w * right_sl.atm_vol**2 + (1.0 - w) * left_sl.atm_vol**2)
+        
+        vrs = np.sqrt(w * right_sl.vol_ratios**2 + (1.0 - w) * left_sl.vol_ratios**2)
+        return SmileBackbone(t, atm_vol, self.deviations, vrs)

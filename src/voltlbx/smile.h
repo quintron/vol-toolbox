@@ -20,6 +20,16 @@ namespace voltlbx
     };
 
 
+    class ExtrapolatedSplineCurve : public SmileCurve, Pimpl<ExtrapolatedSplineCurve>
+    {
+    public:
+        ExtrapolatedSplineCurve(std::vector<double> xs,
+                                std::vector<double> values);
+
+        Jet vol_jet(double x) const override;
+    };
+
+
     class SplineSmileCurve : public SmileCurve, Pimpl<SplineSmileCurve>
     {
     public:

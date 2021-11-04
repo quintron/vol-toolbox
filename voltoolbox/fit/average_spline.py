@@ -82,7 +82,7 @@ class AverageSpline(object):
             vals += [np.vectorize(lambda x: self.put_wing(i, x))(xs)]
         return np.column_stack(vals)
 
-    def fit_coeffs(self, xs, vals, errs=None, *, smoothing=1.0e-12):        
+    def fit_coeffs(self, xs, vals, errs=None, *, smoothing=1.0e-12):
         if errs is None:
             errs = np.array([1.0] * xs.shape[0])        
 
