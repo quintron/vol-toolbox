@@ -357,7 +357,12 @@ class SurfaceBackbone:
     def calendar_arb_slice(self, t):
         lower_sl, upper_sl = self.bounding_pillar_slices(t)
 
-        #TODO handle None left or right slice 
+        if lower_sl is None:
+            lower_sl = self.slice(0.10 * t)
+
+        if upper_sl is None:
+            upper_sl = self.slice(1.5 * t)
+
         return  CalendarSandwich(t, lower_sl, upper_sl)
 
 
