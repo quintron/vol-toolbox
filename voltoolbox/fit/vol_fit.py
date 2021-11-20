@@ -3,11 +3,11 @@ import bisect
 import datetime as dt
 import numpy as np
 
-from typing import Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional
 from dataclasses import dataclass
 from itertools import groupby
 from scipy.optimize import least_squares
-from voltoolbox import (BusinessTimeMeasure, NormalizedSmileCurve, 
+from voltoolbox import (BusinessTimeMeasure, NormalizedSmileCurve, SmileVariationFilter,
                         bs_implied_volatility, longest_increasing_subsequence)
 from voltoolbox.fit.option_quotes import OptionQuoteSlice, QuoteSlice, VolQuoteSlice, VolSlice
 from voltoolbox.fit.fit_utils import act365_time, filter_quotes
@@ -311,22 +311,24 @@ class SmileBackbone:
 
 
 class SurfaceBackbone:
-    def __init__(self):
-        self.deviations = None
+    def __init__(self, deviations):
+        self._deviations = deviations
         self.expiries = []
         self.slices = []
 
-    def add_pillar_slice(self, smile: SmileBackbone) -> Tuple[Optional[SmileBackbone], Optional[SmileBackbone]]:
-        if self.deviations is None: 
-            self.deviations = smile.zs
-        else:
-            if not np.array_equal(self.deviations, smile.zs):
-                raise Exception('invalid slice')
-        self.slices.append(smile)
+    @property
+    def deviations(self):
+        return self._deviations
+
+    def add_pillar_slice(self, t: float, atm_vol: float, vol_ratios: np.array):
+        if len(vol_ratios) != len(self._deviations):
+                raise Exception('invalid slice format')
+
+        self.slices.append(SmileBackbone(t, atm_vol, self._deviations, vol_ratios))
         self.slices = sorted(self.slices, key=lambda sl: sl.time_to_expiry)
         self.expiries = [sl.time_to_expiry for sl in self.slices]
 
-    def bounding_pillar_slices(self, t):
+    def bounding_pillar_slices(self, t) -> Tuple[Optional[SmileBackbone], Optional[SmileBackbone]]:
         if len(self.expiries)==0:
             return (None, None)
         
@@ -350,7 +352,7 @@ class SurfaceBackbone:
         if left_sl is None:
             if np.isnan(atm_vol):
                 atm_vol = right_sl.atm_vol
-            return SmileBackbone(t, atm_vol, self.deviations, right_sl.vol_ratios) 
+            return SmileBackbone(t, atm_vol, self._deviations, right_sl.vol_ratios) 
 
         return _interpolated_slice(t, left_sl, right_sl, atm_vol=atm_vol)
 
@@ -443,3 +445,63 @@ class CalendarSandwich:
         desarb_vol = np.sqrt(desarb_var / self.t)
                 
         return desarb_vol, score, min_vol, max_vol  
+
+
+def fit_surface(target_slices: Dict[dt.datetime ,TargetSlice],
+                *, fit_zs):
+    # TODO clean-up all magic constants
+    atm_vols = fit_atm_vol_curve(target_slices, smoothing=1.0e-3)
+
+    fitted_surf = SurfaceBackbone(fit_zs)
+    expis = sorted_fit_expiries(target_slices)
+    desarb_targets = {}
+    for expi_dt, score in expis:
+        target_sl = target_slices[expi_dt]
+        atm_vol = atm_vols[expi_dt]
+        
+        if len(fitted_surf.expiries) > 0:
+            calendar_sandwich = fitted_surf.calendar_arb_slice(target_sl.t)
+            desarb_mids = []
+            for z, v in zip(target_sl.zs, target_sl.mids):
+                desarb_v, score, min_vol, max_vol =calendar_sandwich.arbitrage_free_vol(z, v)
+                desarb_mids.append(desarb_v)
+            desarb_targets[expi_dt] = desarb_mids
+
+            target_sl = TargetSlice(target_sl.t,
+                                    target_sl.zs,
+                                    np.array(desarb_mids),
+                                    target_sl.errs)
+
+
+        # BUILD A PRIOR
+        if len(fitted_surf.expiries)==0:
+            avg_spline = AverageSpline([3.25, 2.75, 2.25, 1.75, 1.0, 0.5, 0.25],
+                                    [0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
+            coeffs = avg_spline.fit_coeffs(target_sl.zs, target_sl.mids, target_sl.errs, smoothing=1e-7)
+            basis = avg_spline.compute_avg_vals(fit_zs)
+            prior_smile = SmileBackbone(target_sl.t, atm_vol, fit_zs,  basis.dot(coeffs) / atm_vol)
+        else:
+            prior_smile = fitted_surf.slice(target_sl.t)
+            prior_smile = SmileBackbone(target_sl.t, atm_vol, fit_zs, prior_smile.vol_ratios)
+
+        prior_crv = prior_smile.smile_curve()
+        prior_vols = np.array([prior_crv.vol(z) for z in target_sl.zs])
+        prior_vol_diffs = target_sl.mids - prior_vols
+
+        # FILTER MID - PRIOR
+        noise_devs = np.maximum(5.0 / 10000.0, 0.5 * target_sl.errs)
+        atm_dev = 0.01
+        atm_skew_dev = 0.02
+        z_ref = 3.0
+        dvol_filter = SmileVariationFilter(list(target_sl.zs), list(prior_vol_diffs), 
+                                        list(noise_devs),
+                                        atm_dev,
+                                        atm_skew_dev,
+                                        z_ref)
+        filtered_vol_diffs = np.array([dvol_filter.dvol_with_error(z)[0] for z in prior_smile.zs])
+        fitted_vols = prior_smile.atm_vol * prior_smile.vol_ratios + filtered_vol_diffs 
+        fitted_atm_vol = prior_smile.atm_vol + dvol_filter.dvol_with_error(0.0)[0]
+
+        fitted_surf.add_pillar_slice(target_sl.t, fitted_atm_vol, fitted_vols / fitted_atm_vol)
+
+    return fitted_surf
