@@ -256,7 +256,7 @@ def sorted_fit_expiries(target_slices):
 
         bulk_zs = target_sl.zs[ np.abs(target_sl.zs) < 2.5]
         width = 0.5 *(abs(min(bulk_zs)) + max(bulk_zs))
-        max_diff = np.diff(bulk_zs).max()
+        max_diff = np.quantile(np.diff(bulk_zs), 0.90)
         unif_diff = (max(bulk_zs) - min(bulk_zs)) / (len(bulk_zs) - 1)
         strike_uniformity =  max_diff / unif_diff
 
@@ -316,7 +316,7 @@ class SurfaceBackbone:
         self.expiries = []
         self.slices = []
 
-    def add_slice(self, smile: SmileBackbone) -> Tuple[Optional[SmileBackbone], Optional[SmileBackbone]]:
+    def add_pillar_slice(self, smile: SmileBackbone) -> Tuple[Optional[SmileBackbone], Optional[SmileBackbone]]:
         if self.deviations is None: 
             self.deviations = smile.zs
         else:
@@ -326,7 +326,10 @@ class SurfaceBackbone:
         self.slices = sorted(self.slices, key=lambda sl: sl.time_to_expiry)
         self.expiries = [sl.time_to_expiry for sl in self.slices]
 
-    def bounding_slices(self, t):
+    def bounding_pillar_slices(self, t):
+        if len(self.expiries)==0:
+            return (None, None)
+        
         idx = bisect.bisect_left(self.expiries, t)
 
         if idx==0:
@@ -337,21 +340,101 @@ class SurfaceBackbone:
 
         return (self.slices[idx-1], self.slices[idx])
 
-    def interpolated_slice(self, t, *, atm_vol=float('nan')) -> SmileBackbone:
-        left_sl, right_sl = self.bounding_slices(t)
+    def slice(self, t, *, atm_vol=float('nan')) -> SmileBackbone:
+        left_sl, right_sl = self.bounding_pillar_slices(t)
 
         if right_sl is None:
-            raise Exception('no extrapolation allowed')
+            ref_sl = self.slice(left_sl.time_to_expiry * 0.5)
+            return _extrapolated_slice(t, ref_sl, left_sl, atm_vol=atm_vol)
 
         if left_sl is None:
             if np.isnan(atm_vol):
                 atm_vol = right_sl.atm_vol
             return SmileBackbone(t, atm_vol, self.deviations, right_sl.vol_ratios) 
 
-        w = (t - left_sl.time_to_expiry) / (right_sl.time_to_expiry - left_sl.time_to_expiry)
+        return _interpolated_slice(t, left_sl, right_sl, atm_vol=atm_vol)
 
-        if np.isnan(atm_vol):
-            atm_vol = np.sqrt(w * right_sl.atm_vol**2 + (1.0 - w) * left_sl.atm_vol**2)
+    def calendar_arb_slice(self, t):
+        lower_sl, upper_sl = self.bounding_pillar_slices(t)
+
+        #TODO handle None left or right slice 
+        return  CalendarSandwich(t, lower_sl, upper_sl)
+
+
+def _interpolated_slice(t: float,
+                       left_sl: SmileBackbone,
+                       right_sl: SmileBackbone,
+                       *, atm_vol=float('nan')):
+    w = (t - left_sl.time_to_expiry) / (right_sl.time_to_expiry - left_sl.time_to_expiry)
+
+    if np.isnan(atm_vol):
+        atm_vol = np.sqrt(w * right_sl.atm_vol**2 + (1.0 - w) * left_sl.atm_vol**2)
+
+    vrs = np.sqrt(w * right_sl.vol_ratios**2 + (1.0 - w) * left_sl.vol_ratios**2)
+    return SmileBackbone(t, atm_vol,  left_sl.zs, vrs)
+
+
+def _extrapolated_slice(t: float,
+                        ref_sl: SmileBackbone,
+                        left_sl: SmileBackbone,
+                        *, atm_vol=float('nan')):
+    assert(left_sl.time_to_expiry > ref_sl.time_to_expiry)
+    fwd_var_ratios = (left_sl.vol_ratios**2 * left_sl.time_to_expiry - ref_sl.vol_ratios**2 * ref_sl.time_to_expiry) / ( left_sl.time_to_expiry - ref_sl.time_to_expiry)
+    w = left_sl.time_to_expiry / t
+    vrs = np.sqrt(left_sl.vol_ratios**2 * w + (1.0 - w) * fwd_var_ratios)
+    
+    if np.isnan(atm_vol):
+        fwd_var_atm = (left_sl.atm_vol**2 * left_sl.time_to_expiry - ref_sl.atm_vol**2 * ref_sl.time_to_expiry) / ( left_sl.time_to_expiry - ref_sl.time_to_expiry)
+        atm_vol = np.sqrt(left_sl.atm_vol**2 * w + (1.0 - w) * fwd_var_atm)
+
+    return SmileBackbone(t, atm_vol,  left_sl.zs, vrs)
+
+
+class CalendarSandwich:
+
+    def __init__(self, 
+                t: float, 
+                lower_sl: SmileBackbone, 
+                upper_sl: SmileBackbone) -> None:
+        self.t = t
         
-        vrs = np.sqrt(w * right_sl.vol_ratios**2 + (1.0 - w) * left_sl.vol_ratios**2)
-        return SmileBackbone(t, atm_vol, self.deviations, vrs)
+        self.lower_crv = lower_sl.smile_curve()
+        self.lower_t = lower_sl.time_to_expiry
+        
+        self.upper_crv = upper_sl.smile_curve()
+        self.upper_t = upper_sl.time_to_expiry
+
+    def arbitrage_free_vol(self, z: float, vol: float):
+        '''Return (desarb_vol, score, min_vol, max_vol) for calendar arbitrage.
+           Score is an arbitrage indicator, if its value is in [-1, 1] there is no calendar arb.'''       
+        min_var = self.lower_crv.vol(z)**2 * self.lower_t
+        min_vol = np.sqrt(min_var / self.t)
+        
+        max_var = self.upper_crv.vol(z)**2 * self.upper_t 
+        max_vol = np.sqrt(max_var / self.t)
+
+        w = (self.t - self.lower_t) / (self.upper_t - self.lower_t) 
+        mid_var = w * max_var + (1.0 - w) * min_var
+
+        var = vol**2 * self.t
+        if var > mid_var:
+            score = (var - mid_var) / (max_var - mid_var)
+        else:
+            score = (var - mid_var) / (mid_var - min_var)
+
+        # map score into [-1, 1]
+        if (score > 0.5):
+            desarb_score = 1.0 - np.exp(-4.0 * (score - 0.5)) / (1.0 + np.exp(-4.0 * (score - 0.5)))
+        elif (score < -0.5):
+            desarb_score = -(1.0 - np.exp(-4.0 * (-score - 0.5)) / (1.0 + np.exp(-4.0 * (-score - 0.5))))
+        else:
+            desarb_score = score
+
+        if desarb_score > 0.0:
+            desarb_var = mid_var + desarb_score * (max_var - mid_var)
+        else:
+            desarb_var = mid_var + desarb_score * (mid_var - min_var)
+
+        desarb_vol = np.sqrt(desarb_var / self.t)
+                
+        return desarb_vol, score, min_vol, max_vol  
