@@ -1,7 +1,7 @@
 import json
 import dataclasses
 from dataclasses import dataclass
-from typing import Union, Dict, List, Tuple
+from typing import List, Tuple
 from datetime import date, datetime
 
 class EnhancedJSONEncoder(json.JSONEncoder):

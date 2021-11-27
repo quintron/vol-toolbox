@@ -1,9 +1,9 @@
 import math
 import numpy as np
 import datetime as dt
-from typing import Dict, Optional
+from typing import Dict
 
-from voltoolbox import BusinessTimeMeasure, longest_increasing_subsequence, bs_implied_volatility
+from voltoolbox import longest_increasing_subsequence, bs_implied_volatility
 from voltoolbox.fit.option_quotes import OptionSnapshot, OptionQuoteSlice, QuoteSlice
 from voltoolbox.fit.fit_utils import act365_time
 
