@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Optional
 from dataclasses import dataclass
 from itertools import groupby
 from scipy.optimize import least_squares
-from voltoolbox import (BusinessTimeMeasure, NormalizedSmileCurve, SmileVariationFilter,
+from voltoolbox import (BusinessTimeMeasure, NormalizedSmileCurve, SplineSmileCurve, SmileVariationFilter,
                         bs_implied_volatility, longest_increasing_subsequence)
 from voltoolbox.fit.option_quotes import OptionQuoteSlice, QuoteSlice, VolQuoteSlice, VolSlice
 from voltoolbox.fit.fit_utils import act365_time, filter_quotes
@@ -76,18 +76,16 @@ def prepare_vol_quotes(quote_slice: OptionQuoteSlice,
 
     time_to_maturity = time_measure.distance(pricing_dt, quote_slice.expiry)
     put_vols = _slice_implied_vol(quote_slice.put, -1.0, forward, time_to_maturity)
-    put_vols = filter_vol_slice(put_vols, time_to_maturity, 2.0, (-5.0, 1.0))
-
     call_vols = _slice_implied_vol(quote_slice.call, 1.0, forward, time_to_maturity)
-    call_vols = filter_vol_slice(call_vols, time_to_maturity, -1.0, (-1.0, 5.0))
-
     return VolQuoteSlice(quote_slice.symbol, quote_slice.expiry, time_to_maturity, forward, call_vols, put_vols)
 
 
 def prepare_target_vol(vol_slice: VolQuoteSlice )-> VolSlice:
-    put = vol_slice.put
+
+    put = filter_vol_slice(vol_slice.put, vol_slice.time_to_maturity, 2.0, (-5.0, 1.0))
+    call = filter_vol_slice(vol_slice.call, vol_slice.time_to_maturity, -1.0, (-1.0, 5.0))
+
     vol_datas = list(zip(put.log_moneyness, put.mids, put.errs, ['p'] * len(put.mids)))
-    call = vol_slice.call
     vol_datas += list(zip(call.log_moneyness, call.mids, call.errs, ['c'] * len(call.mids)))
     vol_datas = sorted(vol_datas, key = lambda q: q[0])
 
@@ -138,11 +136,25 @@ class TargetSlice():
     errs: np.array
 
     @classmethod
-    def create(cls, vol_sl: VolQuoteSlice):
-        target_vols = prepare_target_vol(vol_sl)
-        mids = np.array(target_vols.mids)
-        zs = np.array(target_vols.log_moneyness) / (math.sqrt(vol_sl.time_to_maturity) * mids)
-        return cls(vol_sl.time_to_maturity, zs, mids, np.array(target_vols.errs))
+    def create(cls, volquote_sl: VolQuoteSlice):
+
+        vol_sl = prepare_target_vol(volquote_sl)
+
+        sqrt_t = math.sqrt(volquote_sl.time_to_maturity)
+        xs = np.array(vol_sl.log_moneyness)
+        mid_vols = np.array(vol_sl.mids)
+        err_vols = np.array(vol_sl.errs)
+
+        bid_vols = mid_vols - err_vols
+        bid_zs = xs / (sqrt_t * bid_vols)
+        
+        ask_vols = mid_vols + err_vols
+        ask_zs = xs / (sqrt_t * ask_vols)
+
+        mid_zs = 0.5 * (bid_zs + ask_zs)
+
+        return cls(volquote_sl.time_to_maturity, 
+                   mid_zs, mid_vols, err_vols)
 
 
 def fit_atm_vol(target_sl: TargetSlice, 
@@ -305,9 +317,14 @@ class SmileBackbone:
     zs: np.array
     vol_ratios: np.array
 
-    def smile_curve(self):
+    def normalized_curve(self):
         vols = self.atm_vol * self.vol_ratios
         return NormalizedSmileCurve(self.zs, vols)
+
+    def sample_smile_curve(self, sampling_zs: np.array):
+        vols = np.vectorize(self.normalized_curve().vol)(sampling_zs)
+        xs = sampling_zs * vols * np.sqrt(self.time_to_expiry)
+        return SplineSmileCurve(xs, vols)
 
 
 class SurfaceBackbone:
@@ -405,10 +422,10 @@ class CalendarSandwich:
                 upper_sl: SmileBackbone) -> None:
         self.t = t
         
-        self.lower_crv = lower_sl.smile_curve()
+        self.lower_crv = lower_sl.normalized_curve()
         self.lower_t = lower_sl.time_to_expiry
         
-        self.upper_crv = upper_sl.smile_curve()
+        self.upper_crv = upper_sl.normalized_curve()
         self.upper_t = upper_sl.time_to_expiry
 
     def arbitrage_free_vol(self, z: float, vol: float):
@@ -447,8 +464,8 @@ class CalendarSandwich:
         return desarb_vol, score, min_vol, max_vol  
 
 
-def fit_surface(target_slices: Dict[dt.datetime ,TargetSlice],
-                *, fit_zs):
+def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
+                      *, fit_zs) -> SurfaceBackbone:
     # TODO clean-up all magic constants
     atm_vols = fit_atm_vol_curve(target_slices, smoothing=1.0e-3)
 
@@ -484,7 +501,7 @@ def fit_surface(target_slices: Dict[dt.datetime ,TargetSlice],
             prior_smile = fitted_surf.slice(target_sl.t)
             prior_smile = SmileBackbone(target_sl.t, atm_vol, fit_zs, prior_smile.vol_ratios)
 
-        prior_crv = prior_smile.smile_curve()
+        prior_crv = prior_smile.normalized_curve()
         prior_vols = np.array([prior_crv.vol(z) for z in target_sl.zs])
         prior_vol_diffs = target_sl.mids - prior_vols
 
