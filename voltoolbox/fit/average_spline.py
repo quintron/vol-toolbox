@@ -4,7 +4,7 @@ import scipy.integrate as integrate
 def avg(f, z):
     if abs(z) < 1.0e-15:
         return f(0.0)
-    x, _ = integrate.quad(f, 0.0, z)
+    x = integrate.romberg(f, 0.0, z)
     return x / z
 
 class AverageSpline(object):
