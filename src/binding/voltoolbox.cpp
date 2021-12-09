@@ -77,14 +77,19 @@ PYBIND11_MODULE(_voltoolbox, m) {
             py::arg("x"));
 
 
-    py::class_<SplineSmileCurve, SmileCurve>(m, "SplineSmileCurve")
+    py::class_<SmileSplineCurve, SmileCurve>(m, "SmileSplineCurve")
         .def(py::init<std::vector<double>, std::vector<double>>(),
              py::arg("xs"), py::arg("vols"));
 
 
-    py::class_<ExtrapolatedSplineCurve, SmileCurve>(m, "NormalizedSmileCurve")
+    py::class_<SplineCurve, SmileCurve>(m, "SplineCurve")
         .def(py::init<std::vector<double>, std::vector<double>>(),
              py::arg("xs"), py::arg("vols"));
+
+
+    py::class_<AverageSplineCurve, SmileCurve>(m, "AverageSplineCurve")
+        .def(py::init<std::vector<double>, std::vector<double>>(),
+             py::arg("xs"), py::arg("vs"));
 
 
     m.def("bs_implied_volatility", &voltlbx::bs_implied_volatility,  

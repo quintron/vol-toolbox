@@ -3,7 +3,7 @@ import numpy as np
 
 from typing import Tuple, Optional
 from dataclasses import dataclass
-from voltoolbox import NormalizedSmileCurve, SplineSmileCurve
+from voltoolbox import SplineCurve, SmileSplineCurve
 
 
 @dataclass(frozen=True)
@@ -15,12 +15,12 @@ class SmileBackbone:
 
     def normalized_curve(self):
         vols = self.atm_vol * self.vol_ratios
-        return NormalizedSmileCurve(self.zs, vols)
+        return SplineCurve(self.zs, vols)
 
     def sample_smile_curve(self, sampling_zs: np.array):
         vols = np.vectorize(self.normalized_curve().vol)(sampling_zs)
         xs = sampling_zs * vols * np.sqrt(self.time_to_expiry)
-        return SplineSmileCurve(xs, vols)
+        return SmileSplineCurve(xs, vols)
 
 
 class SurfaceBackbone:

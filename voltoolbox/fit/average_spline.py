@@ -1,5 +1,7 @@
 import numpy as np
 import scipy.integrate as integrate
+from voltoolbox import AverageSplineCurve
+
 
 def avg(f, z):
     if abs(z) < 1.0e-15:
@@ -7,37 +9,32 @@ def avg(f, z):
     x = integrate.romberg(f, 0.0, z)
     return x / z
 
-class AverageSpline(object):
-    
-    def __init__(self, put_zs=None, call_zs=None):
-        self.put_zs = tuple(put_zs) if put_zs else tuple()
-        self.call_zs = tuple(call_zs)if call_zs else tuple()
 
-    def put_wing(self, i, z):
-        assert(0 <= i < len(self.put_zs) - 1)   
-        if i == 0:
-            a, b, c = (-self.put_zs[1], -self.put_zs[0], 0.0)
-        else:
-            a, b, c = (-self.put_zs[i+1], -self.put_zs[i], -self.put_zs[i-1])
-        
+def put_wing_func(a, b, c):
+    assert((a < b) & (b < c))
+           
+    def f(z): 
         res = (max(0, c - z)**3 - max(0, b - z)**3) / (c - b)
         res -= (max(0, b - z)**3 -max(0, a - z)**3) / (b - a)
         return res / 6.0
-    
-    def call_wing(self, i, z):
-        assert(0 <= i < len(self.call_zs) - 1)       
-        if i==0:
-            a, b, c = (0.0, self.call_zs[0], self.call_zs[1])
-        else:
-            a, b, c = (self.call_zs[i-1], self.call_zs[i], self.call_zs[i+1])
+   
+    return f
 
+
+def call_wing_func(a, b, c):
+    assert((a < b) & (b < c))
+           
+    def f(z): 
         res = (max(0, z - a)**3 -max(0, z - b)**3) / (b - a)
         res -= (max(0, z - b)**3 -max(0, z - c)**3) / (c - b)
         return res / 6.0
-    
-    def convex(self, z):
-        a, b, c = (-2.0, 0.0, 2.0)
+    return f
 
+
+def convex_func(a, b, c):
+    assert((a < b) & (b < c))
+   
+    def f(z): 
         res = (max(0, z - a)**3 - max(0, z - b)**3) / (b - a)
         res -= (max(0, z - b)**3 - max(0, z - c)**3) / (c - b)
         res -= (b - a)**2
@@ -45,59 +42,81 @@ class AverageSpline(object):
         res += (max(0, c - z)**3 - max(0, b - z)**3) / (c - b)
         res -= (max(0, b - z)**3 - max(0, a - z)**3) / (b - a)
         res -= (c-b)**2
-        return res / 12.0  
+        return res / 12.0
+    return f
+
+
+def avg_spline_crv(nodes, f):
+    return AverageSplineCurve(nodes, [f(x) for x in nodes])
+
+
+def avg_convex_func(a, b, c):
+    f = convex_func(a, b, c)
+    return avg_spline_crv((a, b, c), f)
+
+
+def avg_put_wing_func(a, b, c):
+    f = put_wing_func(a, b, c)
+    return avg_spline_crv((a, b, c), f)
+
+
+def avg_call_wing_func(a, b, c):
+    f = call_wing_func(a, b, c)
+    return avg_spline_crv((a, b, c), f)
+
+
+class AverageSpline(object):
+    
+    def __init__(self, put_zs=None, call_zs=None):
         
-    def slope(self, z):
-        return z
-    
-    def put_wing_avg(self, i, z):
-        return avg(lambda x: self.put_wing(i, x), z)
-    
-    def call_wing_avg(self, i, z):
-        return avg(lambda x: self.call_wing(i, x), z)
+        self.basis_funcs = [
+            np.vectorize(lambda z: 1.0),
+            np.vectorize(lambda z: z),
+            np.vectorize(avg_convex_func(*(-2.5, 0.0, 2.5)).vol),
+        ]
 
-    def convex_avg(self, z):
-        return avg(self.convex, z)
-    
-    def slope_avg(self, z):
-        return avg(self.slope, z)
-    
-    def compute_avg_vals(self, xs):
-        vals = [np.array([1.0] * xs.shape[0]),
-                np.vectorize(self.slope_avg)(xs), 
-                np.vectorize(self.convex_avg)(xs)]
-        for i in range(0, len(self.call_zs) - 1):
-            vals += [np.vectorize(lambda x: self.call_wing_avg(i, x))(xs)]
-        for i in range(0, len(self.put_zs) - 1):
-            vals += [np.vectorize(lambda x: self.put_wing_avg(i, x))(xs)]
-        return np.column_stack(vals)
-    
-    def compute_vals(self, xs):
-        vals = [np.array([1.0] * xs.shape[0]),
-                np.vectorize(self.slope)(xs), 
-                np.vectorize(self.convex)(xs)]
-        for i in range(0, len(self.call_zs) - 1):
-            vals += [np.vectorize(lambda x: self.call_wing(i, x))(xs)]
-        for i in range(0, len(self.put_zs) - 1):
-            vals += [np.vectorize(lambda x: self.put_wing(i, x))(xs)]
-        return np.column_stack(vals)
+        self.basis_penalty = [0.0, 0.0, 0.0]
+ 
+        if put_zs:
+            for i in range(len(put_zs) - 1):
+                if i == 0:
+                    a, b, c = (-put_zs[1], -put_zs[0], 0.0)
+                else:
+                    a, b, c = (-put_zs[i+1], -put_zs[i], -put_zs[i-1])
 
-    def fit_coeffs(self, xs, vals, errs=None, *, smoothing=1.0e-12):
+                self.basis_funcs += [np.vectorize(avg_put_wing_func(*(a, b, c)).vol)]
+                self.basis_penalty += [1.0]
+
+        if call_zs:
+            for i in range(len(call_zs) - 1):                
+                if i==0:
+                    a, b, c = (0.0, call_zs[0], call_zs[1])
+                else:
+                    a, b, c = (call_zs[i-1], call_zs[i], call_zs[i+1])
+                self.basis_funcs += [np.vectorize(avg_call_wing_func(*(a, b, c)).vol)]
+                self.basis_penalty += [1.0]
+
+    def sample_basis(self, xs: np.array):
+        return np.column_stack( [f(xs) for f in self.basis_funcs])
+
+    def fit_coeffs(self, xs, vals, errs=None, 
+                    *, smoothing=1.0e-12):
         if errs is None:
             errs = np.array([1.0] * xs.shape[0])        
 
-        basis_vals = self.compute_avg_vals(xs)
+        basis_vals = self.sample_basis(xs)
         basis_vals /= np.column_stack([errs])
         target = vals / errs
 
         var = np.matmul(basis_vals.T, basis_vals)
-        var_regul = smoothing * var.trace() * np.identity(var.shape[0])
-        var_regul[0,0] = 0.0  # dont need to smooth level
-        var_regul[1,1] = 0.0  # dont need to smooth slope
-        var_regul[2,2] = 0.0  # dont need to smooth convexity       
-        var += var_regul
+
+        basis_penalty = np.array(self.basis_penalty)
+        var_regul = np.diag(basis_penalty) * var.trace()
+        sum_pen = basis_penalty.sum()
+        if abs(sum_pen) > 0.0:
+            var_regul /= sum_pen
+
+        var += smoothing * var_regul
 
         cov = basis_vals.T.dot(target)
         return np.linalg.solve(var, cov)
-        
-

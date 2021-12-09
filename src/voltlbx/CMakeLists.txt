@@ -7,12 +7,14 @@ add_library (VolTlbx
              date_utils.cpp
              hyp_integral.h
              hyp_integral.cpp
-             jet.h             
+             jet.h
              linear_filter.h
              linear_filter.cpp
              optim.h
              optim.cpp
              pimpl.h
+             quad.h
+             quad.cpp
              roots.h
              roots.cpp
              smile.h

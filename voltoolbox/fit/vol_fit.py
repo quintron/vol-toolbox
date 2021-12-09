@@ -136,9 +136,9 @@ def fit_atm_vol(target_sl: TargetSlice,
     avg_spline = AverageSpline()
     coeffs = avg_spline.fit_coeffs(target_zs, target_mids, target_errs / np.sqrt(weights), smoothing = 2.0e-7)
 
-    atm_vol = avg_spline.compute_vals(np.array([0.0])).dot(coeffs)[0]
+    atm_vol = avg_spline.sample_basis(np.array([0.0])).dot(coeffs)[0]
 
-    fitted_targets = avg_spline.compute_avg_vals(target_zs).dot(coeffs)
+    fitted_targets = avg_spline.sample_basis(target_zs).dot(coeffs)
     atm_vol_err = ((target_errs + np.abs(target_mids - fitted_targets)) * weights).sum() / weights.sum()
 
     return (atm_vol, atm_vol_err)
@@ -295,10 +295,11 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
 
         # BUILD A PRIOR
         if len(fitted_surf.expiries)==0:
-            avg_spline = AverageSpline([3.25, 2.75, 2.25, 1.75, 1.0, 0.5, 0.25],
-                                    [0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
+            avg_spline = AverageSpline([0.25, 0.5, 1.0, 1.75, 2.25, 2.75, 3.25],
+                                       [0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
+
             coeffs = avg_spline.fit_coeffs(target_sl.zs, target_sl.mids, target_sl.errs, smoothing=1e-7)
-            basis = avg_spline.compute_avg_vals(fit_zs)
+            basis = avg_spline.sample_basis(fit_zs)
             prior_smile = SmileBackbone(target_sl.t, atm_vol, fit_zs,  basis.dot(coeffs) / atm_vol)
         else:
             prior_smile = fitted_surf.slice(target_sl.t)

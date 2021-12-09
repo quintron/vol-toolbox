@@ -20,21 +20,33 @@ namespace voltlbx
     };
 
 
-    class ExtrapolatedSplineCurve : public SmileCurve, Pimpl<ExtrapolatedSplineCurve>
+    class SplineCurve : public SmileCurve, Pimpl<SplineCurve>
     {
     public:
-        ExtrapolatedSplineCurve(std::vector<double> xs,
-                                std::vector<double> values);
+        SplineCurve(const std::vector<double>& xs,
+                    const std::vector<double>& values);
+
+        Jet vol_jet(double x) const override;
+
+        const std::vector<double>& nodes() const;
+    };
+
+
+    class SmileSplineCurve : public SmileCurve, Pimpl<SmileSplineCurve>
+    {
+    public:
+        SmileSplineCurve(std::vector<double> xs,
+                         std::vector<double> vols);
 
         Jet vol_jet(double x) const override;
     };
 
 
-    class SplineSmileCurve : public SmileCurve, Pimpl<SplineSmileCurve>
+    class AverageSplineCurve : public SmileCurve, Pimpl<AverageSplineCurve>
     {
     public:
-        SplineSmileCurve(std::vector<double> xs,
-                         std::vector<double> vols);
+        AverageSplineCurve(std::vector<double> xs,
+                           std::vector<double> values);
 
         Jet vol_jet(double x) const override;
     };
