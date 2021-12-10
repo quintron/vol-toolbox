@@ -54,6 +54,11 @@ namespace voltlbx
             return filter.predict_with_error(z);
         }
 
+        double dvol(double z) const
+        {
+            return filter.predict(z);
+        }
+
         LinearFilter<double> filter;
     };
 
@@ -67,9 +72,16 @@ namespace voltlbx
     {
     }
 
+
     std::tuple<double, double> SmileVariationFilter::dvol_with_error(double z) const
     {
         return impl->dvol_with_error(z);
+    }
+
+
+    double SmileVariationFilter::dvol(double z) const
+    {
+        return impl->dvol(z);
     }
 
 }

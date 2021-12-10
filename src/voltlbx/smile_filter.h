@@ -31,5 +31,8 @@ namespace voltlbx
         }
 
         std::tuple<double, double> dvol_with_error(double z) const;
+
+        double dvol(double z) const;
+
     };
 }

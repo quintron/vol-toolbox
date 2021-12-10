@@ -8,7 +8,8 @@ namespace voltlbx
 
     using Vector = Eigen::VectorXd;
     using Matrix = Eigen::MatrixXd;
-    using SVD = Eigen::BDCSVD<Eigen::Matrix<double, -1, -1, 0>>;
+    using Cholesky = Eigen::LDLT< Eigen::Matrix<double, -1, -1, 0>>;
+
     
     template<typename T>
     class Covariance
@@ -70,9 +71,10 @@ namespace voltlbx
                 cov(i, i) += e * e;                    
             }
 
-            cov_svd = cov.bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+            cov_chol = cov.ldlt();
             const auto v_targets = Vector::Map(targets.data(), targets.size());
-            weights = cov_svd.solve(v_targets);
+            weights = cov_chol.solve(v_targets);
+
             _inputs = inputs;
         }
 
@@ -87,7 +89,7 @@ namespace voltlbx
             double err = std::numeric_limits<double>::quiet_NaN();
             if (with_error)
             {
-                err = std::sqrt(std::max(0.0, (*covariance)(new_input, new_input) - cov.dot(cov_svd.solve(cov))));
+                err = std::sqrt(std::max(0.0, (*covariance)(new_input, new_input) - cov.dot(cov_chol.solve(cov))));
             }
             return { prediction, err };
         }
@@ -114,7 +116,7 @@ namespace voltlbx
         const Cov covariance;
 
         //State
-        SVD cov_svd;
+        Cholesky cov_chol;
         Vector weights;
         std::vector<T> _inputs;
         std::vector<double> _inputs_devs;

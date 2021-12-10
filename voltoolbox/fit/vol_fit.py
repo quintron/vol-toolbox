@@ -281,17 +281,13 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
         
         if len(fitted_surf.expiries) > 0:
             calendar_sandwich = fitted_surf.calendar_arb_slice(target_sl.t)
-            desarb_mids = []
-            for z, v in zip(target_sl.zs, target_sl.mids):
-                desarb_v, score, min_vol, max_vol =calendar_sandwich.arbitrage_free_vol(z, v)
-                desarb_mids.append(desarb_v)
+            desarb_mids, score, min_vol, max_vol = calendar_sandwich.arbitrage_free_vol(target_sl.zs, target_sl.mids)
             desarb_targets[expi_dt] = desarb_mids
 
             target_sl = TargetSlice(target_sl.t,
                                     target_sl.zs,
-                                    np.array(desarb_mids),
+                                    desarb_mids,
                                     target_sl.errs)
-
 
         # BUILD A PRIOR
         if len(fitted_surf.expiries)==0:
@@ -314,14 +310,15 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
         atm_dev = 0.01
         atm_skew_dev = 0.02
         z_ref = 3.0
-        dvol_filter = SmileVariationFilter(list(target_sl.zs), list(prior_vol_diffs), 
-                                        list(noise_devs),
-                                        atm_dev,
-                                        atm_skew_dev,
-                                        z_ref)
-        filtered_vol_diffs = np.array([dvol_filter.dvol_with_error(z)[0] for z in prior_smile.zs])
+        dvol_filter = SmileVariationFilter(target_sl.zs, 
+                                           prior_vol_diffs, 
+                                           noise_devs,
+                                           atm_dev,
+                                           atm_skew_dev,
+                                           z_ref)
+        filtered_vol_diffs = np.array([dvol_filter.dvol(z) for z in prior_smile.zs])
         fitted_vols = prior_smile.atm_vol * prior_smile.vol_ratios + filtered_vol_diffs 
-        fitted_atm_vol = prior_smile.atm_vol + dvol_filter.dvol_with_error(0.0)[0]
+        fitted_atm_vol = prior_smile.atm_vol + dvol_filter.dvol(0.0)
 
         fitted_surf.add_pillar_slice(target_sl.t, fitted_atm_vol, fitted_vols / fitted_atm_vol)
 

@@ -124,37 +124,33 @@ class CalendarSandwich:
         self.upper_crv = upper_sl.normalized_curve()
         self.upper_t = upper_sl.time_to_expiry
 
-    def arbitrage_free_vol(self, z: float, vol: float):
+    def arbitrage_free_vol(self, zs, vols):
         '''Return (desarb_vol, score, min_vol, max_vol) for calendar arbitrage.
            Score is an arbitrage indicator, if its value is in [-1, 1] there is no calendar arb.'''       
-        min_var = self.lower_crv.vol(z)**2 * self.lower_t
+
+        min_var = np.vectorize(self.lower_crv.vol)(zs) **2 * self.lower_t
         min_vol = np.sqrt(min_var / self.t)
         
-        max_var = self.upper_crv.vol(z)**2 * self.upper_t 
+        max_var = np.vectorize(self.upper_crv.vol)(zs)**2 * self.upper_t 
         max_vol = np.sqrt(max_var / self.t)
 
         w = (self.t - self.lower_t) / (self.upper_t - self.lower_t) 
         mid_var = w * max_var + (1.0 - w) * min_var
 
-        var = vol**2 * self.t
-        if var > mid_var:
-            score = (var - mid_var) / (max_var - mid_var)
-        else:
-            score = (var - mid_var) / (mid_var - min_var)
+        var = vols**2 * self.t
+        score = np.select([var > mid_var], 
+                          [(var - mid_var) / (max_var - mid_var)],
+                          (var - mid_var) / (mid_var - min_var))
 
         # map score into [-1, 1]
-        if (score > 0.5):
-            desarb_score = 1.0 - np.exp(-4.0 * (score - 0.5)) / (1.0 + np.exp(-4.0 * (score - 0.5)))
-        elif (score < -0.5):
-            desarb_score = -(1.0 - np.exp(-4.0 * (-score - 0.5)) / (1.0 + np.exp(-4.0 * (-score - 0.5))))
-        else:
-            desarb_score = score
+        desarb_score = np.select([score > 0.5, score < -0.5],
+                                 [1.0 - np.exp(-4.0 * (score - 0.5)) / (1.0 + np.exp(-4.0 * (score - 0.5))), 
+                                  -(1.0 - np.exp(-4.0 * (-score - 0.5)) / (1.0 + np.exp(-4.0 * (-score - 0.5))))],
+                                 score)
 
-        if desarb_score > 0.0:
-            desarb_var = mid_var + desarb_score * (max_var - mid_var)
-        else:
-            desarb_var = mid_var + desarb_score * (mid_var - min_var)
+        desarb_var = np.select([desarb_score > 0.0],
+                               [mid_var + desarb_score * (max_var - mid_var)],
+                                mid_var + desarb_score * (mid_var - min_var))
 
         desarb_vol = np.sqrt(desarb_var / self.t)
-                
         return desarb_vol, score, min_vol, max_vol  
