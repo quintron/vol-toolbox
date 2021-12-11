@@ -2,7 +2,7 @@ import math
 import datetime as dt
 import numpy as np
 
-from typing import Tuple, Dict, Optional
+from typing import Tuple, Dict
 from dataclasses import dataclass
 from itertools import groupby
 from scipy.optimize import least_squares
@@ -52,24 +52,24 @@ def prepare_target_vol(vol_slice: VolQuoteSlice )-> VolSlice:
         log_moneyness, mid, err, opt_type = q
         if abs(log_moneyness - prev_q[0]) > 1.0e-5:
             merged_datas.append((log_moneyness, mid, err))
-        else:            
+        else:        
             if opt_type=='c':
-                assert(prev_q[3]=='p')
+                assert prev_q[3]=='p'
                 if log_moneyness < 0.0:
                     q0 = prev_q
                     q1 = q
                 else:
                     q0 = q
-                    q1 = prev_q                
+                    q1 = prev_q             
             else :
-                assert(prev_q[3]=='c')
+                assert prev_q[3]=='c'
                 if log_moneyness < 0.0:
                     q0 = q
                     q1 = prev_q
                 else:
                     q0 = prev_q
                     q1 = q
-            
+
             diff = abs(q0[1] - q1[1])
             w = (1.0 - min(1.0, diff / q0[2])) * (1.0 - min(1.0, diff / q1[2]))
             w0 = 1.0 - 0.5 * w
@@ -104,13 +104,13 @@ class TargetSlice():
 
         bid_vols = mid_vols - err_vols
         bid_zs = xs / (sqrt_t * bid_vols)
-        
+
         ask_vols = mid_vols + err_vols
         ask_zs = xs / (sqrt_t * ask_vols)
 
         mid_zs = 0.5 * (bid_zs + ask_zs)
 
-        return cls(volquote_sl.time_to_maturity, 
+        return cls(volquote_sl.time_to_maturity,
                    mid_zs, mid_vols, err_vols)
 
 
@@ -120,20 +120,20 @@ def fit_atm_vol(target_sl: TargetSlice,
     target_mids = target_sl.mids
     target_errs = target_sl.errs
 
-    for i in range(0, 3):
+    for _ in range(0, 3):
         atm_mask = (target_zs > -fit_width) & (target_zs < fit_width)
         target_zs = target_zs[atm_mask]
-        
+
         if len(target_zs) > 4: # Enough strike
             target_mids = target_mids[atm_mask]
             target_errs = target_errs[atm_mask]
             weights = (np.maximum(0.0, 1.0 - (target_zs / fit_width))**2.0) * 3.0 / 4.0  # Epanechnikov kernel
             break
-        else: # rescale with larger fit_width 
+        else:  # rescale with larger fit_width
             fit_width *= 1.6
             target_zs = target_sl.zs
 
-    avg_spline = AverageSpline()
+    avg_spline = AverageSpline.average_spline()
     coeffs = avg_spline.fit_coeffs(target_zs, target_mids, target_errs / np.sqrt(weights), smoothing = 2.0e-7)
 
     atm_vol = avg_spline.sample_basis(np.array([0.0])).dot(coeffs)[0]
@@ -143,7 +143,7 @@ def fit_atm_vol(target_sl: TargetSlice,
 
     return (atm_vol, atm_vol_err)
 
-    
+
 class VolCurveFitFunction:
 
     def __init__(self, ts, vols, errs, smoothing):
@@ -153,7 +153,7 @@ class VolCurveFitFunction:
         self.errs = errs
         self.smoothing = smoothing
 
-        ref_fwd_vars = [] 
+        ref_fwd_vars = []
         prev_t = 0.0
         prev_var = 0.0
         for t, v in zip(ts, vols):
@@ -186,7 +186,7 @@ class VolCurveFitFunction:
         for v, target_v, err in zip(fit_vols, self.vols, self.errs):
             scores.append((v - target_v) / err)
 
-        #Curve smoothing penality term
+        # Curve smoothing penality term
         fwd_vols = self.fwd_vol_curve(xs)
         fwd_vol_smoothing = np.sqrt(self.smoothing) * np.ediff1d(fwd_vols) / np.ediff1d(self.ts)
 
@@ -239,14 +239,14 @@ def sorted_fit_expiries(target_slices):
     slices_scores = {}
     for expi_dt, infos in slice_score_infos.items():
         width, err, nb_strikes, strike_uniformity = infos    
-        # Score  1s build on three criteria : wing width, nb strikes, wvol spread(error) median
+        # Score is build on three criteria : wing width, nb strikes, vol spread
         # Weight on each criteria is chosen so that :
         #   1. wing width is more important that nb strike and vol spread
         #   2. nb strike is more important than vol spread
         score = 0.0
         if (width > wing_score_threshold):
             score += 2.0
-        
+
         if (nb_strikes > nb_strike_threshold):
             score += 0.5
 
@@ -261,7 +261,7 @@ def sorted_fit_expiries(target_slices):
     #sorted by decreasing score
     res = []
     expis = sorted(slices_scores.items(), key=lambda item : -item[1])
-    for sc, ts in groupby(expis, key=lambda item : -item[1]):
+    for _, ts in groupby(expis, key=lambda item : -item[1]):
         res += reversed(sorted(((t, s) for t, s in ts)))
 
     return res
@@ -275,13 +275,13 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
     fitted_surf = SurfaceBackbone(fit_zs)
     expis = sorted_fit_expiries(target_slices)
     desarb_targets = {}
-    for expi_dt, score in expis:
+    for expi_dt, _ in expis:
         target_sl = target_slices[expi_dt]
         atm_vol = atm_vols[expi_dt]
-        
+
         if len(fitted_surf.expiries) > 0:
             calendar_sandwich = fitted_surf.calendar_arb_slice(target_sl.t)
-            desarb_mids, score, min_vol, max_vol = calendar_sandwich.arbitrage_free_vol(target_sl.zs, target_sl.mids)
+            desarb_mids, _, _, _ = calendar_sandwich.arbitrage_free_vol(target_sl.zs, target_sl.mids)
             desarb_targets[expi_dt] = desarb_mids
 
             target_sl = TargetSlice(target_sl.t,
@@ -291,18 +291,17 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
 
         # BUILD A PRIOR
         if len(fitted_surf.expiries)==0:
-            avg_spline = AverageSpline([0.25, 0.5, 1.0, 1.75, 2.25, 2.75, 3.25],
-                                       [0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
+            avg_spline = AverageSpline.average_spline([0.25, 0.5, 1.0, 1.75, 2.25, 2.75, 3.25],
+                                                      [0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
 
             coeffs = avg_spline.fit_coeffs(target_sl.zs, target_sl.mids, target_sl.errs, smoothing=1e-7)
             basis = avg_spline.sample_basis(fit_zs)
             prior_smile = SmileBackbone(target_sl.t, atm_vol, fit_zs,  basis.dot(coeffs) / atm_vol)
         else:
-            prior_smile = fitted_surf.slice(target_sl.t)
-            prior_smile = SmileBackbone(target_sl.t, atm_vol, fit_zs, prior_smile.vol_ratios)
+            prior_smile = fitted_surf.slice(target_sl.t, atm_vol = atm_vol)
 
         prior_crv = prior_smile.normalized_curve()
-        prior_vols = np.array([prior_crv.vol(z) for z in target_sl.zs])
+        prior_vols = np.vectorize(prior_crv.vol)(target_sl.zs)
         prior_vol_diffs = target_sl.mids - prior_vols
 
         # FILTER MID - PRIOR
@@ -310,14 +309,14 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
         atm_dev = 0.01
         atm_skew_dev = 0.02
         z_ref = 3.0
-        dvol_filter = SmileVariationFilter(target_sl.zs, 
-                                           prior_vol_diffs, 
+        dvol_filter = SmileVariationFilter(target_sl.zs,
+                                           prior_vol_diffs,
                                            noise_devs,
                                            atm_dev,
                                            atm_skew_dev,
                                            z_ref)
-        filtered_vol_diffs = np.array([dvol_filter.dvol(z) for z in prior_smile.zs])
-        fitted_vols = prior_smile.atm_vol * prior_smile.vol_ratios + filtered_vol_diffs 
+        filtered_vol_diffs = np.vectorize(dvol_filter.dvol)(prior_smile.zs)
+        fitted_vols = prior_smile.atm_vol * prior_smile.vol_ratios + filtered_vol_diffs
         fitted_atm_vol = prior_smile.atm_vol + dvol_filter.dvol(0.0)
 
         fitted_surf.add_pillar_slice(target_sl.t, fitted_atm_vol, fitted_vols / fitted_atm_vol)

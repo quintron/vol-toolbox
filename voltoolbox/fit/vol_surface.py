@@ -35,7 +35,7 @@ class SurfaceBackbone:
 
     def add_pillar_slice(self, t: float, atm_vol: float, vol_ratios: np.array):
         if len(vol_ratios) != len(self._deviations):
-                raise Exception('invalid slice format')
+            raise Exception('invalid slice format')
 
         self.slices.append(SmileBackbone(t, atm_vol, self._deviations, vol_ratios))
         self.slices = sorted(self.slices, key=lambda sl: sl.time_to_expiry)
