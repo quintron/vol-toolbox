@@ -94,7 +94,7 @@ class AverageSpline(object):
                 basis_penalty += [1.0]
 
         if call_zs:
-            for i in range(len(call_zs) - 1): 
+            for i in range(len(call_zs) - 1):
                 if i==0:
                     a, b, c = (0.0, call_zs[0], call_zs[1])
                 else:

@@ -17,7 +17,11 @@ class SmileBackbone:
         vols = self.atm_vol * self.vol_ratios
         return SplineCurve(self.zs, vols)
 
-    def sample_smile_curve(self, sampling_zs: np.array):
+    def sample_smile_curve(self, sampling_zs: np.array=None):
+        if sampling_zs is None:
+            mid_pts = 0.5 * (self.zs[1:] + self.zs[:-1])
+            sampling_zs = np.append(self.zs, mid_pts)
+
         vols = np.vectorize(self.normalized_curve().vol)(sampling_zs)
         xs = sampling_zs * vols * np.sqrt(self.time_to_expiry)
         return SmileSplineCurve(xs, vols)
@@ -44,12 +48,12 @@ class SurfaceBackbone:
     def bounding_pillar_slices(self, t) -> Tuple[Optional[SmileBackbone], Optional[SmileBackbone]]:
         if len(self.expiries)==0:
             return (None, None)
-        
+
         idx = bisect.bisect_left(self.expiries, t)
 
         if idx==0:
             return (None, self.slices[idx])
-        
+
         if idx==len(self.expiries):
             return (self.slices[idx-1], None)
 
@@ -118,21 +122,37 @@ class CalendarSandwich:
                 upper_sl: SmileBackbone) -> None:
         self.t = t
         
-        self.lower_crv = lower_sl.normalized_curve()
+        lower_crv = lower_sl.normalized_curve()
+        self.lower_vol_fn = np.vectorize(lower_crv.vol)
         self.lower_t = lower_sl.time_to_expiry
-        
-        self.upper_crv = upper_sl.normalized_curve()
+
+        upper_crv = upper_sl.normalized_curve()
+        self.upper_vol_fn = np.vectorize(upper_crv.vol)
         self.upper_t = upper_sl.time_to_expiry
 
     def arbitrage_free_vol(self, zs, vols):
         '''Return (desarb_vol, score, min_vol, max_vol) for calendar arbitrage.
            Score is an arbitrage indicator, if its value is in [-1, 1] there is no calendar arb.'''       
-
-        min_var = np.vectorize(self.lower_crv.vol)(zs) **2 * self.lower_t
+        assert len(zs) == len(vols)
+        min_var = self.lower_vol_fn(zs)**2 * self.lower_t
         min_vol = np.sqrt(min_var / self.t)
-        
-        max_var = np.vectorize(self.upper_crv.vol)(zs)**2 * self.upper_t 
+
+        max_var = self.upper_vol_fn(zs)**2 * self.upper_t
         max_vol = np.sqrt(max_var / self.t)
+
+        need_fix = min_vol >= max_vol
+        if need_fix.any():
+            avg_vol = 0.5 * (min_vol + max_vol)
+            delta_vol = 0.5 * np.abs(max_vol - min_vol)
+            EPS = 0.10
+            fixed_min_vol = np.select([need_fix, ~need_fix],
+                                    [avg_vol - EPS * delta_vol, min_vol])
+            fixed_max_vol = np.select([need_fix, ~need_fix],
+                                    [avg_vol + EPS * delta_vol, max_vol])
+            min_vol = fixed_min_vol
+            max_vol = fixed_max_vol
+            min_var = min_vol**2 * self.t
+            max_var = max_vol**2 * self.t
 
         w = (self.t - self.lower_t) / (self.upper_t - self.lower_t) 
         mid_var = w * max_var + (1.0 - w) * min_var
@@ -143,7 +163,7 @@ class CalendarSandwich:
                           (var - mid_var) / (mid_var - min_var))
 
         # map score into [-1, 1]
-        desarb_score = np.select([score > 0.5, score < -0.5],
+        desarb_score = np.select([score > 0.5, score <= -0.5],
                                  [1.0 - np.exp(-4.0 * (score - 0.5)) / (1.0 + np.exp(-4.0 * (score - 0.5))), 
                                   -(1.0 - np.exp(-4.0 * (-score - 0.5)) / (1.0 + np.exp(-4.0 * (-score - 0.5))))],
                                  score)

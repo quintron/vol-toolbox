@@ -291,8 +291,8 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
 
         # BUILD A PRIOR
         if len(fitted_surf.expiries)==0:
-            avg_spline = AverageSpline.average_spline([0.25, 0.5, 1.0, 1.75, 2.25, 2.75, 3.25],
-                                                      [0.25, 0.5, 1.0, 1.5, 2.0, 2.5])
+            avg_spline = AverageSpline.average_spline([1.0, 1.75, 3.0],
+                                                      [1.0, 2.0])
 
             coeffs = avg_spline.fit_coeffs(target_sl.zs, target_sl.mids, target_sl.errs, smoothing=1e-7)
             basis = avg_spline.sample_basis(fit_zs)
@@ -308,7 +308,7 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
         noise_devs = np.maximum(5.0 / 10000.0, 0.5 * target_sl.errs)
         atm_dev = 0.01
         atm_skew_dev = 0.02
-        z_ref = 3.0
+        z_ref = 2.5
         dvol_filter = SmileVariationFilter(target_sl.zs,
                                            prior_vol_diffs,
                                            noise_devs,
