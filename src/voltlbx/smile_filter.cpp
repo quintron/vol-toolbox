@@ -9,28 +9,31 @@ namespace voltlbx
     {
     public:
 
-        SmileCov(double atm_dev, 
-                 double atm_skew_dev, 
+        SmileCov(double atm_dev,
+                 double atm_skew_ratio,
+                 double wing_skew_ratio,
                  double z_ref)
             :atm_dev(atm_dev),
-            beta(atm_skew_dev / atm_dev),
+            atm_skew_ratio(atm_skew_ratio),
+            wing_skew_ratio(wing_skew_ratio),
             z_ref(z_ref)
         {
         }
 
-        double dev(double) const override
+        double dev(double z) const override
         {
-            return atm_dev;
+            return atm_dev * std::sqrt(1.0 + std::pow(wing_skew_ratio * z, 2));
         }
 
         double correl(double z1, double z2) const override
         {
-            return std::exp(-0.5 * std::pow(beta * z_ref * (std::atan(z1 / z_ref) - std::atan(z2 / z_ref)), 2.0));
+            return std::exp(-0.5 * std::pow(atm_skew_ratio * z_ref * (std::atan(z1 / z_ref) - std::atan(z2 / z_ref)), 2.0));
         }
 
     private:
         const double atm_dev;
-        const double beta;
+        const double atm_skew_ratio;
+        const double wing_skew_ratio;
         const double z_ref;
     };
 
@@ -42,9 +45,10 @@ namespace voltlbx
                                 const std::vector<double>& dvols,
                                 const std::vector<double>& error_devs,
                                 double atm_dev,
-                                double atm_skew_dev,
+                                double atm_skew_ratio,
+                                double wing_skew_ratio,
                                 double z_ref)
-            : filter(std::make_shared<SmileCov>(atm_dev, atm_skew_dev, z_ref))
+            : filter(std::make_shared<SmileCov>(atm_dev, atm_skew_ratio, wing_skew_ratio, z_ref))
         {
             filter.fit(zs, dvols, error_devs);
         }
@@ -68,7 +72,10 @@ namespace voltlbx
                                                const std::vector<double>& error_devs, 
                                                Config config)
         : Pimpl<SmileVariationFilter>(zs, dvols, error_devs,
-                                      config.atm_dev, config.atm_skew_dev, config.z_ref)
+                                      config.atm_dev,
+                                      config.atm_skew_ratio,
+                                      config.wing_skew_ratio,
+                                      config.z_ref)
     {
     }
 

@@ -99,8 +99,11 @@ PYBIND11_MODULE(_voltoolbox, m) {
 
     py::class_<SmileVariationFilter>(m, "SmileVariationFilter")
         .def(py::init(&SmileVariationFilter::create),
-             py::arg("zs"), py::arg("dvols"), py::arg("error_devs"), 
-             py::arg("atm_dev"), py::arg("atm_skew_dev"), py::arg("z_ref"))
+             py::arg("zs"), py::arg("dvols"), py::arg("error_devs"),
+             py::arg("atm_dev"),
+             py::arg("atm_skew_ratio"),
+             py::arg("wing_skew_ratio"),
+             py::arg("z_ref"))
         .def("dvol_with_error", &SmileVariationFilter::dvol_with_error, py::arg("z"))
         .def("dvol", &SmileVariationFilter::dvol, py::arg("z"));
 

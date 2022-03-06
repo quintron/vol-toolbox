@@ -11,7 +11,8 @@ namespace voltlbx
         struct Config
         {
             double atm_dev;
-            double atm_skew_dev;
+            double atm_skew_ratio;
+            double wing_skew_ratio;
             double z_ref;
         };
 
@@ -24,10 +25,12 @@ namespace voltlbx
                                            const std::vector<double>& dvols,
                                            const std::vector<double>& error_devs, 
                                            double atm_dev,
-                                           double atm_skew_dev,
+                                           double atm_skew_ratio,
+                                           double wing_skew_ratio,
                                            double z_ref)
         {
-            return SmileVariationFilter(zs, dvols, error_devs, { atm_dev, atm_skew_dev, z_ref });
+            return SmileVariationFilter(zs, dvols, error_devs, 
+                                        { atm_dev, atm_skew_ratio, wing_skew_ratio, z_ref });
         }
 
         std::tuple<double, double> dvol_with_error(double z) const;

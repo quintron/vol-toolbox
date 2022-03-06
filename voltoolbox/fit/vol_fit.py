@@ -305,15 +305,17 @@ def fit_target_slices(target_slices: Dict[dt.datetime, TargetSlice],
         # FILTER MID - PRIOR
         prior_vol_diffs = desarb_mids - prior_vols
         noise_devs = np.maximum(5.0 / 10000.0, 0.5 * target_sl.errs)
-        atm_dev = 0.01
-        atm_skew_dev = 0.02
-        z_ref = 2.5
+        ATM_DEV = 0.01
+        ATM_SKEW_RATIO = 2.0
+        WING_SKEW_RATIO = 0.5
+        Z_REF = 2.5
         dvol_filter = SmileVariationFilter(target_sl.zs,
                                            prior_vol_diffs,
                                            noise_devs,
-                                           atm_dev,
-                                           atm_skew_dev,
-                                           z_ref)
+                                           ATM_DEV,
+                                           ATM_SKEW_RATIO,
+                                           WING_SKEW_RATIO,
+                                           Z_REF)
         filtered_vol_diffs = np.vectorize(dvol_filter.dvol)(prior_smile.zs)
         filtered_atm_vol_diff = dvol_filter.dvol(0.0)
 
