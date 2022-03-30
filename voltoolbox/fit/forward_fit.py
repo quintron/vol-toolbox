@@ -1,12 +1,9 @@
-import math
 import datetime as dt
 import numpy as np
 import pandas as pd
 from typing import Dict, Tuple
 from scipy import optimize
-
-from voltoolbox import longest_increasing_subsequence, bs_implied_volatility
-from voltoolbox.fit.option_quotes import OptionSnapshot, OptionQuoteSlice, QuoteSlice
+from voltoolbox.fit.option_quotes import OptionSnapshot, OptionQuoteSlice
 from voltoolbox.fit.fit_utils import act365_time
 
 
