@@ -122,3 +122,10 @@ def random_user_agent():
     """
 
     return random.choice(USER_AGENTS)
+
+def random_header():
+    return {
+            "User-Agent": random_user_agent(),
+            "Connection": "keep-alive",
+            "Referer": "https://www.google.fr"
+        }

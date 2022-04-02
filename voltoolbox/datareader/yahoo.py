@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-from voltoolbox.datareader.scrap_utils import random_user_agent
+from voltoolbox.datareader.scrap_utils import random_header
 
 
 _OPTIONS_BASE_URL = "https://query1.finance.yahoo.com/" "v7/finance/options/"
@@ -21,18 +21,13 @@ _OPTION_FIELDS = (
 )
 
 
-class YahooOptionClient:
+class YahooClient:
 
     def __init__(self):
         self.session = requests.Session()
 
     def _load_url(self, url: str):
-        headers = {
-            "User-Agent": random_user_agent(),
-            "Connection": "keep-alive",
-            "Referer": "https://www.google.fr"
-        }
-        res = self.session.get(url, headers=headers)
+        res = self.session.get(url, headers=random_header())
         return res.json()
 
     def snap_option_quotes(self, symb: str):
@@ -49,7 +44,7 @@ class YahooOptionClient:
                 for typ in ('calls', 'puts'):
                     for q in option[typ]:
                         quote = [{'calls': 'call', 'puts': 'put'}[typ]]  # option_type
-                        for dkey, rkey, ntype in _OPTION_FIELDS:
+                        for _, rkey, ntype in _OPTION_FIELDS:
                             try:
                                 val = ntype(q[rkey])
                             except (KeyError, ValueError):
@@ -60,5 +55,11 @@ class YahooOptionClient:
                                 columns = ['option_type'] + [t[0] for t in _OPTION_FIELDS])
 
         for f in ('expiration', 'last_trade_timestamp'):
-            quote_df[f] = pd.to_datetime(quote_df[f], unit='s', origin='unix')        
+            quote_df[f] = pd.to_datetime(quote_df[f], unit='s', origin='unix')
+
+        for f in ('option_type', 'contract_size', 'currency'):
+            quote_df[f] = quote_df[f].astype('category')
+
+        quote_df['symbol'] = quote_df['symbol'].astype(str)
+
         return quote_df
