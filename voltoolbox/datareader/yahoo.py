@@ -3,7 +3,7 @@ import pandas as pd
 from voltoolbox.datareader.scrap_utils import random_header
 
 
-_OPTIONS_BASE_URL = "https://query1.finance.yahoo.com/" "v7/finance/options/"
+_OPTIONS_BASE_URL = "https://query1.finance.yahoo.com/v7/finance/options/"
 
 
 _OPTION_FIELDS = (
