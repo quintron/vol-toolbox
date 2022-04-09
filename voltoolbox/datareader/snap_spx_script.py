@@ -42,7 +42,7 @@ def snap_and_write_options(symb: str,
         print(e)
 
 
-TRADING_SESSION = (dt.time(9, 30), dt.time(16, 0), pytz.timezone('US/Eastern'))
+TRADING_SESSION = (dt.time(9, 30), dt.time(16, 0), pytz.timezone('America/New_York'))
 
 
 def is_trading():
