@@ -1,3 +1,5 @@
+import argparse
+import os
 import time
 import pytz
 import datetime as dt
@@ -16,7 +18,8 @@ _YAHOO_SYMBOLS = {
 }
 
 
-def snap_and_write_options(symb: str) -> None:
+def snap_and_write_options(symb: str, 
+                           dest_folder: str) -> None:
     print(f'snap {symb}')
     try:
         obs_time = pd.Timestamp.now(tz='utc')
@@ -30,9 +33,10 @@ def snap_and_write_options(symb: str) -> None:
 
         file_time_stamp = obs_time.strftime('%Y%m%d_%H%M')
         file_name = f'option_{symb}_{file_time_stamp}.csv'
-        option_df.to_csv(file_name)
+        file_path = os.path.join(dest_folder, file_name)
+        option_df.to_csv(file_path)
 
-        print(f'    {file_name}')
+        print(f'    {file_path}')
     except Exception as e:
         print('snap failed :')
         print(e)
@@ -52,17 +56,21 @@ def is_trading():
 
     return now.time() >= start and now.time() <= end
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dest', required=False, default='',
+                        help='destination folder')
+    args = parser.parse_args()
 
-SNAP_FREQUENCY = 60 * 15 # 15 minutes
+    SNAP_FREQUENCY = 60 * 15 # 15 minutes
+    RAN_GEN = np.random.default_rng()
+    while True:
+        if is_trading():
+            snap_and_write_options('SPX', args.dest)
+        else:
+            print('market is closed')
 
-
-RAN_GEN = np.random.default_rng()
-
-
-while True:
-    if is_trading():
-        snap_and_write_options('SPX')
-
-    # randomize frequency to trick yahoo server
-    wait_time = int(SNAP_FREQUENCY * RAN_GEN.uniform(0.8, 1.2, 1)[0])
-    time.sleep(wait_time)
+        # randomize frequency to trick yahoo server
+        wait_time = int(SNAP_FREQUENCY * RAN_GEN.uniform(0.8, 1.2, 1)[0])
+        print(f'wait {wait_time} s')
+        time.sleep(wait_time)
