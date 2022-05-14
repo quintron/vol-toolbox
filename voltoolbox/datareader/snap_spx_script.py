@@ -37,9 +37,9 @@ def snap_and_write_options(symb: str,
         option_df.to_csv(file_path)
 
         print(f'    {file_path}')
-    except Exception as e:
+    except Exception as ex:
         print('snap failed :')
-        print(e)
+        print(ex)
 
 
 TRADING_SESSION = (dt.time(9, 30), dt.time(16, 0), pytz.timezone('America/New_York'))
