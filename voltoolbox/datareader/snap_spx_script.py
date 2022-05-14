@@ -11,15 +11,16 @@ from voltoolbox.datareader.yahoo import YahooClient
 _YAHOO_CLIENT = YahooClient()
 
 
-_YAHOO_SYMBOLS = {
-    'spx' : '%5ESPX',
+_YAHOO_SYMBOLS = {    
     'rut' : '%5ERUT',
-    'goog': 'GOOG'
+    'spx' : '%5ESPX',
+    'vix' : '%5EVIX',
 }
 
 
 def snap_and_write_options(symb: str, 
-                           dest_folder: str) -> None:
+                           dest_folder: str,
+                           *, compressed=True) -> None:
     print(f'snap {symb}')
     try:
         obs_time = pd.Timestamp.now(tz='utc')
@@ -34,7 +35,11 @@ def snap_and_write_options(symb: str,
         file_time_stamp = obs_time.strftime('%Y%m%d_%H%M')
         file_name = f'option_{symb}_{file_time_stamp}.csv'
         file_path = os.path.join(dest_folder, file_name)
-        option_df.to_csv(file_path)
+
+        if compressed:
+            option_df.to_csv(file_path + '.zst', compression='zstd')
+        else:
+            option_df.to_csv(file_path)
 
         print(f'    {file_path}')
     except Exception as ex:
