@@ -15,3 +15,17 @@ def scrap_us_rate_curve(d: dt.date) -> pd.Series:
     rate_curve /= 100.0
     rate_curve.name = d
     return rate_curve
+
+
+def scrap_last_us_rate_curve(d: dt.date) -> pd.Series:
+    res = None
+    shift = 0
+    while res is None and shift < 10:
+        try:
+            res = scrap_us_rate_curve(d + dt.timedelta(days=-shift))
+        except Exception:
+            res=None
+        shift += 1
+    if res is None :
+        raise Exception(f'Unable to find a curve for {d}')
+    return res
