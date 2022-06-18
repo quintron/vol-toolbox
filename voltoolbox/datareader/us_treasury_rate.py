@@ -26,6 +26,6 @@ def scrap_last_us_rate_curve(d: dt.date) -> pd.Series:
         except Exception:
             res=None
         shift += 1
-    if res is None :
+    if res is None:
         raise Exception(f'Unable to find a curve for {d}')
     return res

@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Tuple
 from scipy import optimize
+from voltoolbox.utils import act365_time
 from voltoolbox.fit.option_quotes import OptionSnapshot, OptionQuoteSlice
-from voltoolbox.fit.fit_utils import act365_time
 
 
 ForwardBidAsk = Tuple[float, Tuple[float, float]]

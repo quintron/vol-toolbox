@@ -3,8 +3,9 @@ import datetime as dt
 import numpy as np
 
 from typing import Tuple
-from voltoolbox import (BusinessTimeMeasure, 
+from voltoolbox import (BusinessTimeMeasure,
                         bs_implied_volatility, longest_increasing_subsequence)
+from voltoolbox.utils import act365_time
 from voltoolbox.fit.option_quotes import OptionQuoteSlice, QuoteSlice, VolQuoteSlice, VolSlice
 
 
@@ -30,11 +31,6 @@ def prepare_vol_quotes(quote_slice: OptionQuoteSlice,
     put_vols = _slice_implied_vol(quote_slice.put, -1.0, forward, time_to_maturity)
     call_vols = _slice_implied_vol(quote_slice.call, 1.0, forward, time_to_maturity)
     return VolQuoteSlice(quote_slice.symbol, quote_slice.expiry, time_to_maturity, forward, call_vols, put_vols)
-
-
-def act365_time(t0: dt.datetime, t1: dt.datetime):
-    delta = t1 - t0
-    return (delta.days + delta.seconds / 86400.0) / 365.0
 
 
 def filter_quotes(quote_slice: OptionQuoteSlice,
@@ -86,10 +82,10 @@ def filter_quotes(quote_slice: OptionQuoteSlice,
                              tuple(out_discount * put_bid[call_intrinsic_filter][inc_subseq]),
                              tuple(out_discount * put_ask[call_intrinsic_filter][inc_subseq]))
 
-    return OptionQuoteSlice(quote_slice.symbol, 
+    return OptionQuoteSlice(quote_slice.symbol,
                             quote_slice.expiry,
                             discount,
-                            filt_call_sl, 
+                            filt_call_sl,
                             filt_put_sl)
 
 
