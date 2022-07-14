@@ -54,7 +54,7 @@ class OptionQuoteSlice(JsonableObject):
 @dataclass(frozen=True)
 class OptionSnapshot(JsonableObject):
     time_stamp: datetime
-    ref_spot: float    
+    ref_spot: float 
     slices: List[OptionQuoteSlice]
 
     @classmethod

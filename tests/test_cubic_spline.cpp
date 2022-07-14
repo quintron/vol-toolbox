@@ -19,7 +19,7 @@ void check_natural_spline_continuity(const std::vector<double>& xs,
             {
                 return std::tuple { x * (1.0 - std::numeric_limits<double>::epsilon()),
                                     x * (1.0 + std::numeric_limits<double>::epsilon()) };
-            }                
+            }
             else
             {
                 return std::tuple { -std::numeric_limits<double>::min(), 

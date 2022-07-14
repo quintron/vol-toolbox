@@ -121,7 +121,7 @@ class CalendarSandwich:
                 lower_sl: SmileBackbone, 
                 upper_sl: SmileBackbone) -> None:
         self.t = t
-        
+    
         lower_crv = lower_sl.normalized_curve()
         self.lower_vol_fn = np.vectorize(lower_crv.vol)
         self.lower_t = lower_sl.time_to_expiry
@@ -132,7 +132,7 @@ class CalendarSandwich:
 
     def arbitrage_free_vol(self, zs, vols):
         '''Return (desarb_vol, score, min_vol, max_vol) for calendar arbitrage.
-           Score is an arbitrage indicator, if its value is in [-1, 1] there is no calendar arb.'''       
+           Score is an arbitrage indicator, if its value is in [-1, 1] there is no calendar arb.'''    
         assert len(zs) == len(vols)
         min_var = self.lower_vol_fn(zs)**2 * self.lower_t
         min_vol = np.sqrt(min_var / self.t)
@@ -146,15 +146,15 @@ class CalendarSandwich:
             delta_vol = 0.5 * np.abs(max_vol - min_vol)
             EPS = 0.10
             fixed_min_vol = np.select([need_fix, ~need_fix],
-                                    [avg_vol - EPS * delta_vol, min_vol])
+                                      [avg_vol - EPS * delta_vol, min_vol])
             fixed_max_vol = np.select([need_fix, ~need_fix],
-                                    [avg_vol + EPS * delta_vol, max_vol])
+                                      [avg_vol + EPS * delta_vol, max_vol])
             min_vol = fixed_min_vol
             max_vol = fixed_max_vol
             min_var = min_vol**2 * self.t
             max_var = max_vol**2 * self.t
 
-        w = (self.t - self.lower_t) / (self.upper_t - self.lower_t) 
+        w = (self.t - self.lower_t) / (self.upper_t - self.lower_t)
         mid_var = w * max_var + (1.0 - w) * min_var
 
         var = vols**2 * self.t
@@ -173,4 +173,4 @@ class CalendarSandwich:
                                 mid_var + desarb_score * (mid_var - min_var))
 
         desarb_vol = np.sqrt(desarb_var / self.t)
-        return desarb_vol, score, min_vol, max_vol  
+        return desarb_vol, score, min_vol, max_vol
