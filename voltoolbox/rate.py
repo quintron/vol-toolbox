@@ -31,3 +31,7 @@ class DiscountRateCurve:
 
     def discount_rate(self, d):
         return self.rate_fn(act365_time(self.pricing_date, d))
+
+    def discount_factor(self, d):
+        t = act365_time(self.pricing_date, d)
+        return np.exp(- t * self.rate_fn(t))
