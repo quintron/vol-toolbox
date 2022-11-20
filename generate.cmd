@@ -1,2 +1,2 @@
 mkdir build
-call build/cmake .. -A x64
+call cmake build/.. -A x64
